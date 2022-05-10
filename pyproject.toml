@@ -1,0 +1,19 @@
+[tool.poetry]
+name = "expobot"
+version = "0.1.0"
+description = ""
+authors = ["Ruslan Iskov <ruslan.rv.ua@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+fastapi = "^0.76.0"
+tortoise-orm = "^0.19.0"
+ccxt = "^1.81.95"
+
+[tool.poetry.dev-dependencies]
+uvicorn = "^0.17.6"
+black = "^22.3.0"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
