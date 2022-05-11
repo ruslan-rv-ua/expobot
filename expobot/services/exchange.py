@@ -1,5 +1,6 @@
 import ccxt
 import settings
+from fastapi import HTTPException
 
 
 class Exchange:
@@ -17,7 +18,9 @@ class Exchange:
         self.description = description
         exchange_class = getattr(ccxt, self.exchange)
         if exchange_class is None:
-            raise ValueError(f"Exchange `{self.exchange}` is not supported")
+            raise HTTPException(
+                status_code=404, detail=f"Exchange `{self.exchange}` not found"
+            ) # TODO: replace hardcoded status code with custom one
         self.exchange_instance: ccxt.Exchange = (
             exchange_class()
         )  # TODO: add api_key and api_secret
@@ -30,7 +33,9 @@ class Exchange:
 
     def fetch_symbol_info(self, symbol: str) -> dict:
         self.exchange_instance.load_markets()
-        return self.exchange_instance.markets.get(symbol)
+        symbol_info = self.exchange_instance.markets.get(symbol)
+        if symbol_info is None:
+            raise HTTPException(f"Symbol `{symbol}` is not supported")
 
 
 exchanges: dict[str, Exchange] = {
