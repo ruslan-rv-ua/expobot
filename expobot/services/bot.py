@@ -22,6 +22,6 @@ class BotService:
         """Get all bot ids"""
         return await BotModel.all().values_list("id", flat=True)
 
-    async def get(self) -> Bot:
+    async def get_bot(self) -> Bot:
         """Get bot by id"""
         return Bot.from_orm(await self.__get())

@@ -5,10 +5,10 @@ from models.bot import BotModel
 from schemas.bot import Bot, BotCreate
 from services.bot import BotService
 
-bot_router = APIRouter(prefix="/bots")
+router = APIRouter(prefix="/bots")
 
 
-@bot_router.get("/", response_model=list[str], tags=["bots"])
+@router.get("/", response_model=list[str], tags=["bots"])
 async def get_all_bot_ids():
     """Get all bot ids"""
     # bot_ids = await BotModel.all().values_list("id", flat=True)
@@ -16,12 +16,12 @@ async def get_all_bot_ids():
     return await BotService.get_bot_ids()
 
 
-@bot_router.get("/{id}", response_model=Bot, tags=["bots"])
+@router.get("/{id}", response_model=Bot, tags=["bots"])
 async def get_bot(bot_service: BotService = Depends(BotService)):
     """Get bot by id"""
-    return await bot_service.get()
+    return await bot_service.get_bot()
 
-@bot_router.delete("/{id}", tags=["bots"])
+@router.delete("/{id}", tags=["bots"])
 async def delete_bot(bot_service: BotService = Depends(BotService)):
     """Delete bot by id"""
     # await bot_service.delete()

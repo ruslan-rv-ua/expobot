@@ -4,9 +4,9 @@ TODO:
     - make descriptions and examples for models
 """
 from fastapi import FastAPI
-from fastapi.responses import JSONResponse
 from tortoise.contrib.fastapi import register_tortoise
-from routers.bot import bot_router
+from routers.bot import router as bot_router
+from routers.gui import router as gui_router
 
 
 import settings
@@ -22,6 +22,7 @@ TODO""",
 )
 
 app.include_router(bot_router)
+app.include_router(gui_router)
 
 register_tortoise(
     app,
