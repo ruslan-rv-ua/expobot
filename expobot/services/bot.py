@@ -20,8 +20,7 @@ class BotService:
     @staticmethod
     async def get_bot_ids() -> list[str]:
         """Get all bot ids"""
-        bot_ids = await BotModel.all().values_list("id", flat=True)
-        return bot_ids
+        return await BotModel.all().values_list("id", flat=True)
 
     async def get(self) -> Bot:
         """Get bot by id"""

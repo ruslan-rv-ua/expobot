@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException
+from urllib3 import HTTPResponse
 from models.bot import BotModel
 
 from schemas.bot import Bot, BotCreate
@@ -19,6 +20,13 @@ async def get_all_bot_ids():
 async def get_bot(bot_service: BotService = Depends(BotService)):
     """Get bot by id"""
     return await bot_service.get()
+
+@bot_router.delete("/{id}", tags=["bots"])
+async def delete_bot(bot_service: BotService = Depends(BotService)):
+    """Delete bot by id"""
+    # await bot_service.delete()
+    print('xxx'*200)
+    return '111'*200
 
 # async def get_bot(id: str):
 #     '''
