@@ -1,14 +1,7 @@
 {% extends "layouts/main.html" %}
-{% macro status_to_table_class(status)%}
-    {%- if status == "running" -%}table-success
-    {%- elif status == "stopped" -%}table-danger
-    {%- elif status == "error" -%}table-warning
-    {%- elif status == "paused" -%}table-info
-    {%- endif -%}
-{% endmacro %}
 {% block title %}ExpoBot{% endblock %}
 {% block main_content %}
-    <h1>Bots</h1>
+    <h1>Bots: {{bots|length}}</h1>
     <table class="table">
         <thead>
             <th scope="col">ID</th>
@@ -17,24 +10,11 @@
             <th scope="col">Description</th>
             <th scope="col">Actions</th>
         </thead>
-        <tbody id="bots-table-tbody">
-            {%- for bot in bots -%}
-                <tr class="{{ status_to_table_class(bot.status)}}">
-                    <th scope="row" class="col-3">
-                        <a class="btn" href="/bot/{{ bot.id }}">{{ bot.id }}</a>
-                    </th>
-                    <td class="col-1">{{ bot.status | upper }}</td>
-                    <td class="col-1">{{ bot.total_level_height * 100 }} %</td>
-                    <td>{{ bot.description }}</td>
-                    <td class="col-2">
-                        <a href="/bot/{{ bot.id }}/run" class="btn btn-success">Run</a>
-                        <a href="/bot/{{ bot.id }}/pause" class="btn btn-primary">Pause</a>
-                        <a href="/bot/{{ bot.id }}/stop" class="btn btn-danger">Stop</a>
-                    </td>
-                </tr>
-            {%- endfor -%}
+        <tbody id="bots-table-tbody"
+               hx-trigger="load"
+               hx-get="/partial"
+               hx-swap="outerHTML">
         </tbody>
     </table>
     <hr>
-    <button class="btn btn-primary">Reload</button>
 {% endblock %}

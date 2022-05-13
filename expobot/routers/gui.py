@@ -14,8 +14,18 @@ templates = Jinja2Templates(directory="templates")
 
 @router.get("/", response_class=HTMLResponse)
 async def show_bots(request: Request):
+    return templates.TemplateResponse(
+        "show_bots.html",
+        {
+            "request": request,
+        },
+    )
+
+
+@router.get("/partial", response_class=HTMLResponse)
+async def bots_table_tbody(request: Request):
     bots = await BotService.get_bots()
 
     return templates.TemplateResponse(
-        "show_bots.html", {"request": request, "bots": bots}
+        "partial/bots_table_tbody.html", {"request": request, "bots": bots}
     )
