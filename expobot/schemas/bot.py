@@ -48,15 +48,6 @@ class Bot(BotBase):
         orm_mode = True
 
 
-class Bots(pydantic.BaseModel):
-    """Bots schema."""
-
-    __root__: list[Bot]
-
-    class Config:
-        orm_mode = True
-
-
 class BotCreate(BotBase):
     level_percent: float = pydantic.Field(
         default=settings.DEFAULT_LEVEL_PERCENT,

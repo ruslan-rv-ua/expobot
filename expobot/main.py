@@ -3,15 +3,13 @@ TODO:
     - move all constants from models to settings
     - make descriptions, examples, status codes more clear
 """
+
 from fastapi import APIRouter, FastAPI
 from tortoise.contrib.fastapi import register_tortoise
-from routers.bot import router as bot_router
-from routers.gui import router as gui_router
-
 
 import settings
 from routers.bot import router as bot_router
-from services.exchange import exchanges_manager
+from routers.gui import router as gui_router
 
 app = FastAPI(
     title="ExpoBot",
@@ -34,7 +32,6 @@ register_tortoise(
     modules={"models": ["models.bot"]},
     generate_schemas=settings.GENERATE_SCHEMAS,
 )
-
 
 
 if __name__ == "__main__":

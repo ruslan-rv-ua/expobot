@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, Response, status
-from schemas.bot import Bot, BotCreate, Bots
+from schemas.bot import Bot, BotCreate
 from schemas.enums import BotStatus
 from services.bot import BotService
 
@@ -10,8 +10,8 @@ router = APIRouter(
 )
 
 
-@router.get("/", response_model=Bots)
-async def get_bots(status: BotStatus | None = None):
+@router.get("/", response_model=list[Bot])
+async def get_bots(status: BotStatus | None = None) -> list[Bot]:
     """Get all bots"""
     return await BotService.get_bots(status=status)
 

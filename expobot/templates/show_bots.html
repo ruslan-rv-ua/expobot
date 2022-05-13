@@ -1,44 +1,40 @@
-<!-- jinja2 html template -->
-<!DOCTYPE html>
-<html lang="en">
-
-
-<head>
-    <meta charset="UTF-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <!-- bootswatch dark theme -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/darkly/bootstrap.min.css">
-    <title>Expobot</title>
-</head>
-
-<body>
-    <h1>Hi!</h1>
-    {{request}}
-    <h2>Bots</h2>
-
+{% extends "layouts/main.html" %}
+{% macro status_to_table_class(status)%}
+    {%- if status == "running" -%}table-success
+    {%- elif status == "stopped" -%}table-danger
+    {%- elif status == "error" -%}table-warning
+    {%- elif status == "paused" -%}table-info
+    {%- endif -%}
+{% endmacro %}
+{% block title %}ExpoBot{% endblock %}
+{% block main_content %}
+    <h1>Bots</h1>
     <table class="table">
-
-        <head>
-            <tr>
-                <th>status</th>
-                <th>Bot ID</th>
-                <th>Description</th>
-                <th>Level Height</th>
-            </tr>
-        </head>
-        <tbody>
-            {% for bot in bots %}
-            <tr>
-                <td>{{bot.status.value}}</td>
-                <td>{{bot.id}}</td>
-                <td>{{bot.description}}</td>
-                <td>{{bot.total_level_height*100}} %</td>
-            </tr>
-            {% endfor %}
+        <thead>
+            <th scope="col">ID</th>
+            <th scope="col">Status</th>
+            <th scope="col">Percentage</th>
+            <th scope="col">Description</th>
+            <th scope="col">Actions</th>
+        </thead>
+        <tbody id="bots-table-tbody">
+            {%- for bot in bots -%}
+                <tr class="{{ status_to_table_class(bot.status)}}">
+                    <th scope="row" class="col-3">
+                        <a class="btn" href="/bot/{{ bot.id }}">{{ bot.id }}</a>
+                    </th>
+                    <td class="col-1">{{ bot.status | upper }}</td>
+                    <td class="col-1">{{ bot.total_level_height * 100 }} %</td>
+                    <td>{{ bot.description }}</td>
+                    <td class="col-2">
+                        <a href="/bot/{{ bot.id }}/run" class="btn btn-success">Run</a>
+                        <a href="/bot/{{ bot.id }}/pause" class="btn btn-primary">Pause</a>
+                        <a href="/bot/{{ bot.id }}/stop" class="btn btn-danger">Stop</a>
+                    </td>
+                </tr>
+            {%- endfor -%}
         </tbody>
     </table>
-
-</body>
-
-</html>
+    <hr>
+    <button class="btn btn-primary">Reload</button>
+{% endblock %}

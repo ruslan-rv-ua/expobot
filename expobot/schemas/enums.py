@@ -8,6 +8,9 @@ class BotStatus(str, enum.Enum):
     PAUSED = "paused"
     STOPPED = "stopped"
 
+    def __str__(self) -> str:
+        return self.value
+
 class SessionStatus(str, enum.Enum):
     """Session status."""
 

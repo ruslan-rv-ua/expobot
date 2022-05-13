@@ -1,7 +1,7 @@
 from fastapi import HTTPException
 from schemas.enums import BotStatus
 from models.bot import BotModel
-from schemas.bot import Bot, BotCreate, Bots
+from schemas.bot import Bot, BotCreate
 from services.exchange import exchanges_manager
 
 
@@ -19,13 +19,13 @@ class BotService:
         return bot_orm
 
     @staticmethod
-    async def get_bots(status: BotStatus | None) -> Bots:
+    async def get_bots(status: BotStatus | None = None) -> list[Bot]:
         """Get all bot ids"""
         if status is None:
             bots_orm = await BotModel.all()
         else:
             bots_orm = await BotModel.filter(status=status)
-        return Bots.from_orm(bots_orm)
+        return [Bot.from_orm(bot_orm) for bot_orm in bots_orm]
 
     async def get_bot(self) -> Bot:
         """Get bot by id"""
