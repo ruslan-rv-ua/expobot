@@ -1,0 +1,44 @@
+<!-- jinja2 html template -->
+<!DOCTYPE html>
+<html lang="en">
+
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- bootswatch dark theme -->
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootswatch/3.3.7/darkly/bootstrap.min.css">
+    <title>Expobot</title>
+</head>
+
+<body>
+    <h1>Hi!</h1>
+    {{request}}
+    <h2>Bots</h2>
+
+    <table class="table">
+
+        <head>
+            <tr>
+                <th>status</th>
+                <th>Bot ID</th>
+                <th>Description</th>
+                <th>Level Height</th>
+            </tr>
+        </head>
+        <tbody>
+            {% for bot in bots %}
+            <tr>
+                <td>{{bot.status.value}}</td>
+                <td>{{bot.id}}</td>
+                <td>{{bot.description}}</td>
+                <td>{{bot.total_level_height*100}} %</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+</body>
+
+</html>

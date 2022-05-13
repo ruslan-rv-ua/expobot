@@ -5,6 +5,9 @@ TODO:
 """
 from fastapi import APIRouter, FastAPI
 from tortoise.contrib.fastapi import register_tortoise
+from routers.bot import router as bot_router
+from routers.gui import router as gui_router
+
 
 import settings
 from routers.bot import router as bot_router
@@ -23,6 +26,7 @@ api_router = APIRouter(prefix="/api")
 api_router.include_router(bot_router)
 
 app.include_router(api_router)
+app.include_router(gui_router)
 
 register_tortoise(
     app,
@@ -34,8 +38,4 @@ register_tortoise(
 
 
 if __name__ == "__main__":
-    #TODO: remove this
-    from services.exchange import exchanges
-
-    ex = exchanges_manager["fake_kuna"]
-    print(ex.fetch_symbol_info("XRP/UAH"))
+    pass
