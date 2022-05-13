@@ -1,16 +1,14 @@
 """
 TODO:
     - move all constants from models to settings
-    - make descriptions and examples for models
+    - make descriptions, examples, status codes more clear
 """
-from fastapi import FastAPI
-from fastapi.responses import JSONResponse
+from fastapi import APIRouter, FastAPI
 from tortoise.contrib.fastapi import register_tortoise
-from routers.bot import bot_router
-
 
 import settings
-from services.exchange import exchanges
+from routers.bot import router as bot_router
+from services.exchange import exchanges_manager
 
 app = FastAPI(
     title="ExpoBot",
@@ -21,7 +19,10 @@ TODO""",
     version=settings.VERSION,
 )
 
-app.include_router(bot_router)
+api_router = APIRouter(prefix="/api")
+api_router.include_router(bot_router)
+
+app.include_router(api_router)
 
 register_tortoise(
     app,
@@ -33,7 +34,8 @@ register_tortoise(
 
 
 if __name__ == "__main__":
+    #TODO: remove this
     from services.exchange import exchanges
 
-    ex = exchanges["fake_kuna"]
+    ex = exchanges_manager["fake_kuna"]
     print(ex.fetch_symbol_info("XRP/UAH"))

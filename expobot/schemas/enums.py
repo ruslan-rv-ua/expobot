@@ -4,11 +4,15 @@ import enum
 class BotStatus(str, enum.Enum):
     """Bot status."""
 
-    READY = "ready"
     RUNNING = "running"
     PAUSED = "paused"
     STOPPED = "stopped"
-    ERROR = "error"
+
+class SessionStatus(str, enum.Enum):
+    """Session status."""
+
+    OPEN = "open"
+    CLOSED = "closed"
 
 class OrderSide(str, enum.Enum):
     """Order side."""
