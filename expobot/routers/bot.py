@@ -22,12 +22,10 @@ async def get_bot(bot_service: BotService = Depends(BotService)):
     return await bot_service.get_bot()
 
 
-@router.post("/{id}", response_model=Bot)
-async def create_bot(
-    bot_data: BotCreate, bot_service: BotService = Depends(BotService)
-):
+@router.post("/", response_model=Bot)
+async def create_bot(bot_data: BotCreate):
     """Create bot"""
-    return await bot_service.create_bot(bot_data)
+    return await BotService.create_bot(bot_data)
 
 
 @router.delete(

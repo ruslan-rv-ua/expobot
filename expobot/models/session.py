@@ -18,11 +18,10 @@ class TradeSession(models.Model):
     current_level = fields.IntField()
     current_price = fields.FloatField()
 
-    bot = fields.OneToOneField(
+    bot = fields.ForeignKeyField(
         model_name="BotModel",
         related_name="session",
-        on_delete=fields.SET_NULL,
-        null=True,
+        on_delete=fields.CASCADE,
     )
 
     class Meta:

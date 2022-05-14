@@ -6,9 +6,8 @@ from services.exchange import exchanges_manager
 
 
 class BotService:
-    def __init__(self, id: str):
+    def __init__(self, id: int):
         self.id = id
-        # print(Bot.from_orm(self.bot))
         # TODO: fix this: self.exchange = exchanges[self.bot.exchange_account]
 
     async def __get(self) -> BotModel:
@@ -31,17 +30,31 @@ class BotService:
         """Get bot by id"""
         return Bot.from_orm(await self.__get())
 
-    async def create_bot(self, bot_data: BotCreate) -> Bot:
+    @staticmethod
+    async def create_bot(bot_data: BotCreate) -> Bot:
         """Create bot"""
-        if await BotModel.get_or_none(id=self.id) is not None:
-            raise HTTPException(status_code=409, detail="Bot already exists")
+
+        if await BotModel.get_or_none(name=bot_data.name) is not None:
+            raise HTTPException(
+                status_code=409, detail="Bot with the same name already exists"
+            )
+        if (
+            await BotModel.get_or_none(
+                exchange_account=bot_data.exchange_account, symbol=bot_data.symbol
+            )
+            is not None
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail="Bot with the same exchange account and symbol already exists",
+            )
         exchange = exchanges_manager[bot_data.exchange_account]
         symbol_info = exchange.fetch_symbol_info(bot_data.symbol)
         taker = symbol_info["taker"]
         maker = symbol_info["maker"]
         level_height = bot_data.level_percent / 100
         bot_orm = await BotModel.create(
-            id=self.id,
+            name=bot_data.name,
             description=bot_data.description,
             status=BotStatus.STOPPED,
             exchange_account=bot_data.exchange_account,

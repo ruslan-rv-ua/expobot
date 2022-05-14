@@ -1,6 +1,4 @@
-from typing import Any
 import pydantic
-from requests import session
 import settings
 from schemas.enums import BotStatus
 
@@ -8,6 +6,7 @@ from schemas.enums import BotStatus
 class BotBase(pydantic.BaseModel):
     """Base model for bot."""
 
+    name: str
     description: str | None = None
     exchange_account: str = pydantic.Field(
         ...,
@@ -28,13 +27,7 @@ class BotBase(pydantic.BaseModel):
 class Bot(BotBase):
     """Bot schema."""
 
-    id: str = pydantic.Field(
-        ...,
-        min_length=1,
-        max_length=50,
-        description="Bot id.",
-        example="bot_binance_btc_usdt",
-    )
+    id: int
     status: BotStatus
     buy_up_levels: int
     buy_down_levels: int

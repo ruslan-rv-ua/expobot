@@ -3,7 +3,8 @@ from schemas.enums import BotStatus
 
 
 class BotModel(models.Model):
-    id = fields.CharField(max_length=50, pk=True)
+    id = fields.IntField(pk=True)
+    name = fields.CharField(max_length=50, unique=True)
     description = fields.TextField(null=True)
     status = fields.CharEnumField(BotStatus)
     exchange_account = fields.CharField(max_length=255, null=False)

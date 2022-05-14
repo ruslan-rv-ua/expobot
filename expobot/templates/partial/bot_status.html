@@ -1,0 +1,4 @@
+<span id="bot-status"
+      hx-trigger="every 5s"
+      hx-get="partial/status/{{ bot.id }}"
+      hx-swap="outerHTML">[{{bot.status}}]</span>
