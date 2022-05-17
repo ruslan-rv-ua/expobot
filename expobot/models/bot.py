@@ -1,51 +1,34 @@
-from tortoise import fields, models
+from datetime import datetime
 from schemas.enums import BotStatus
+import settings
+from sqlmodel import SQLModel, Field
 
 
-class BotBaseModel(models.Model):
-    id = fields.IntField(pk=True)
-    name = fields.CharField(max_length=50, unique=True)
-    description = fields.TextField(null=True)
-    status = fields.CharEnumField(BotStatus)
-    exchange_account = fields.CharField(max_length=255, null=False)
-    symbol = fields.CharField(max_length=25, null=False)
-    amount = fields.FloatField(null=False)
-    buy_up_levels = fields.IntField()
-    buy_down_levels = fields.IntField()
-
-    level_height = fields.FloatField(null=False)
-    taker = fields.FloatField(null=False)
-    maker = fields.FloatField(null=False)
-    total_level_height = fields.FloatField()
-
-    level_0_price = fields.FloatField()
-
-    class Meta:
-        abstract = True
+class BotBase(SQLModel):
+    name: str = Field(min_length=1, max_length=100)
+    description: str | None = Field(
+        default=None, min_length=1, max_length=255
+    )
+    exchange_account: str = Field(min_length=1, max_length=255)
+    symbol: str = Field(min_length=1, max_length=21)
+    trade_amount: float = 1.0
+    level_height: float = Field(default=settings.DEFAULT_LEVEL_HEIGHT)
+    level_0_price: float = Field(default=settings.DEFAULT_LEVEL_0_PRICE)
+    buy_up_levels: int = Field(default=settings.DEFAULT_BUY_UP_LEVELS)
+    buy_down_levels: int = Field(default=settings.DEFAULT_BUY_DOWN_LEVELS)
 
 
-class BotModel(BotBaseModel):
+class Bot(BotBase, table=True):
+    """Database model for Bot"""
 
-    current_level = fields.IntField()
-    current_price = fields.FloatField()
-    current_price_timestamp = fields.IntField()
+    id: int = Field(primary_key=True)
+    status: BotStatus
 
-    created_at = fields.DatetimeField(auto_now_add=True)
-    updated_at = fields.DatetimeField(auto_now=True)
-    message = fields.CharField(max_length=255, null=True)
+    taker: float
+    maker: float
+    total_level_height: float
 
-    class Meta:
-        table = "bots"
+    last_price: float
+    last_level: int
 
-    def __str__(self):
-        return f"ORM BotModel: {self.name}"
-
-
-class BotArchiveModel(BotBaseModel):
-    created_at = fields.DatetimeField(auto_now_add=True)
-
-    class Meta:
-        table = "bots_archive"
-
-    def __str__(self):
-        return f"ORM BotArchiveModel: {self.name}"
+    created_at: datetime = Field(default=datetime.now())

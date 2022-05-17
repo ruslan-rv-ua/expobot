@@ -1,74 +1,73 @@
-from fastapi import HTTPException
+from requests import session
+from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi import Depends, HTTPException
+from db import get_session
 from schemas.enums import BotStatus
-from models.bot import BotModel
+from models.bot import Bot
 from schemas.bot import Bot, BotCreate
 from services.exchange import exchanges_manager
+from sqlmodel import select
 
 
 class BotService:
-    def __init__(self, id: int):
+    def __init__(self, id: int, session: AsyncSession = Depends(get_session)):
         self.id = id
+        self.session = session
         # TODO: fix this: self.exchange = exchanges[self.bot.exchange_account]
-
-    async def __get(self) -> BotModel:
-        """Get bot by id"""
-        bot_orm = await BotModel.get_or_none(id=self.id)
-        if bot_orm is None:
-            raise HTTPException(status_code=404, detail="Bot not found")
-        return bot_orm
-
-    @staticmethod
-    async def get_bots(status: BotStatus | None = None) -> list[Bot]:
-        """Get all bot ids"""
-        if status is None:
-            bots_orm = await BotModel.all()
-        else:
-            bots_orm = await BotModel.filter(status=status)
-        return [Bot.from_orm(bot_orm) for bot_orm in bots_orm]
 
     async def get_bot(self) -> Bot:
         """Get bot by id"""
-        return Bot.from_orm(await self.__get())
+        bot = (
+            await self.session.execute(select(Bot).where(Bot.id == self.id))
+        ).scalar_one_or_none()
+        if bot is None:
+            raise HTTPException(
+                status_code=404, detail=f"Bot with id={self.id} not found"
+            )
+        return bot
 
     @staticmethod
-    async def create_bot(bot_data: BotCreate) -> Bot:
+    async def get_bots(
+        session: AsyncSession, status: BotStatus | None = None
+    ) -> list[Bot]:
+        """Get all bot ids"""
+        query = select(Bot)
+        if status is not None:
+            query = query.where(Bot.status == status)
+        bots = (await session.execute(query))
+        return list(bots.scalars())
+
+
+    @staticmethod
+    async def create_bot(session: AsyncSession, bot_data: BotCreate) -> Bot:
         """Create bot"""
 
-        if await BotModel.get_or_none(name=bot_data.name) is not None:
+        if (await session.execute(select(Bot).where(Bot.name == bot_data.name))).one_or_none():
             raise HTTPException(
                 status_code=409, detail="Bot with the same name already exists"
-            )
-        if (
-            await BotModel.get_or_none(
-                exchange_account=bot_data.exchange_account, symbol=bot_data.symbol
-            )
-            is not None
-        ):
-            raise HTTPException(
-                status_code=409,
-                detail="Bot with the same exchange account and symbol already exists",
             )
         exchange = exchanges_manager[bot_data.exchange_account]
         symbol_info = exchange.fetch_symbol_info(bot_data.symbol)
         taker = symbol_info["taker"]
         maker = symbol_info["maker"]
-        level_height = bot_data.level_percent / 100
-        total_level_height=level_height + taker + maker
-        bot_orm = await BotModel.create(
-            **bot_data.dict(exclude_unset=True),
+        total_level_height=bot_data.level_height + taker + maker
+        bot = Bot(
+            **bot_data.dict(),
             status=BotStatus.STOPPED,
             taker=taker,
             maker=maker,
-            level_height=level_height,
             total_level_height=total_level_height,
-            level_0_price=111,#!!!
-            current_level=0,
-            current_price=0,
-            current_price_timestamp=0,
+            last_level=0,
+            last_price=0,
         )
-        return Bot.from_orm(bot_orm)
+        print('>>>>>>>>>>>>>>>>>', bot)
+        session.add(bot)
+        await session.commit()
+        await session.refresh(bot)
+        return bot
 
-    async def delete_bot(self) -> None:
-        """Delete bot by id"""
-        bot_orm = await self.__get()
-        await bot_orm.delete()
+
+    # async def delete_bot(self) -> None:
+    #     """Delete bot by id"""
+    #     bot_orm = await self.__get()
+    #     await bot_orm.delete()

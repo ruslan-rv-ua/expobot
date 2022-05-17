@@ -1,30 +1,14 @@
 VERSION = "0.0.1"
 
-DEFAULT_LEVEL_PERCENT = 3
+DEFAULT_LEVEL_HEIGHT = 0.03 # means 3%
+DEFAULT_LEVEL_0_PRICE = 1.0
 DEFAULT_BUY_UP_LEVELS = 3
 DEFAULT_BUY_DOWN_LEVELS = 3
 
 
 # DATABASE_URL = "sqlite://:memory:"
-DATABASE_URL = f"sqlite://database_expobot.db"
-GENERATE_SCHEMAS = True
-
-TORTOISE_CONFIG = {
-  "connections": {
-    "default": DATABASE_URL
-  },
-  "apps": {
-    "my_app": {
-      "models": [
-        "models.bot",
-        "models.order",
-      ],
-      "default_connection": "default"
-    }
-  },
-  "use_tz": "False",
-  "timezone": "UTC"
-}
+# DATABASE_URL = f"sqlite:///./database_expobot.db"
+DATABASE_URL = f"sqlite+aiosqlite:///database_expobot.db"
 
 
 EXCHANGE_ACCOUNTS = {

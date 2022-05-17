@@ -1,30 +1,20 @@
-from tortoise import fields, models
+from datetime import datetime
 from schemas.enums import OrderSide, OrderStatus
+from sqlmodel import ForeignKey, SQLModel, Field
 
+class Order(SQLModel, table=True):
+    id: int | None = None
+    datetime: datetime
+    status: OrderStatus
+    side: OrderSide
+    symbol: str = Field(min_length=1, max_length=10)
+    price: float = Field(description="float price in quote currency (may be empty for market orders)")
+    average:float = Field(description="float average filling price")
+    amount:float = Field(description="ordered amount of base currency")
+    cost:float = Field(description="total cost of order in quote currency")
+    fee_currency:str = Field(max_length=10, description="fee currency")
+    fee_coust:float = Field(description="the fee amount in fee currency")
+    fee_rate:float|None = Field(default=None, description="the fee rate (if available)")
 
-class Order(models.Model):
-    id = fields.CharField(pk=True, max_length=100)
-    datetime = fields.DatetimeField(auto_now_add=True)
-    status = fields.CharEnumField(OrderStatus)
-    side = fields.CharEnumField(OrderSide)
-    symbol = fields.CharField(max_length=25, null=False)
-    price = fields.FloatField(
-        null=True,
-        description="float price in quote currency (may be empty for market orders)",
-    )
-    average = fields.FloatField(description="float average filling price")
-    amount = fields.FloatField(description="ordered amount of base currency")
-    cost = fields.FloatField(description="total cost of order in quote currency")
-    fee_currency = fields.CharField(max_length=10, description="fee currency")
-    fee_coust = fields.FloatField(description="the fee amount in fee currency")
-    fee_rate = fields.FloatField(null=True, description="the fee rate (if available)")
+    bot_id = ForeignKey('Bot', related_name='orders')
 
-    bot = fields.ForeignKeyField(
-        "my_app.bot", related_name="orders", on_delete=fields.CASCADE
-    )
-
-    class Meta:
-        table = "orders"
-
-    def __str__(self):
-        return f"ORM Order: {self.id}"
