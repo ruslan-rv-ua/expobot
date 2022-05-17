@@ -53,18 +53,18 @@ class BotService:
         taker = symbol_info["taker"]
         maker = symbol_info["maker"]
         level_height = bot_data.level_percent / 100
+        total_level_height=level_height + taker + maker
         bot_orm = await BotModel.create(
-            name=bot_data.name,
-            description=bot_data.description,
+            **bot_data.dict(exclude_unset=True),
             status=BotStatus.STOPPED,
-            exchange_account=bot_data.exchange_account,
-            symbol=bot_data.symbol,
-            buy_up_levels=bot_data.buy_up_levels,
-            buy_down_levels=bot_data.buy_down_levels,
-            level_height=level_height,
             taker=taker,
             maker=maker,
-            total_level_height=level_height + taker + maker,
+            level_height=level_height,
+            total_level_height=total_level_height,
+            level_0_price=111,#!!!
+            current_level=0,
+            current_price=0,
+            current_price_timestamp=0,
         )
         return Bot.from_orm(bot_orm)
 

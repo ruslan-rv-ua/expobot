@@ -10,8 +10,9 @@
             "request": "launch",
             "module": "uvicorn",
             "args": [
-                "expobot.main:app"
+                "main:app"
             ],
+            "cwd": "${workspaceFolder}/expobot",
             "jinja": true,
             "justMyCode": true
         }

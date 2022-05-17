@@ -28,8 +28,7 @@ app.include_router(gui_router)
 
 register_tortoise(
     app,
-    db_url=settings.DATABASE_URL,
-    modules={"models": ["models.bot"]},
+    config=settings.TORTOISE_CONFIG,
     generate_schemas=settings.GENERATE_SCHEMAS,
 )
 
