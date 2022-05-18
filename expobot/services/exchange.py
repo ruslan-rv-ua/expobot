@@ -1,3 +1,4 @@
+from functools import lru_cache
 import ccxt
 import settings
 from fastapi import HTTPException
@@ -42,7 +43,6 @@ class Exchange:
 
     def fetch_symbol_ticker(self, symbol: str) -> dict:
         ticker = self.exchange_instance.fetch_ticker(symbol)
-
         if ticker is None:
             pass
             raise HTTPException(
@@ -55,6 +55,44 @@ class Exchange:
                 or ticker["info"].get("close")
             )
         return ticker
+
+    def fetch_symbol_orderbook(self, symbol: str) -> dict:
+        orderbook = self.exchange_instance.fetch_order_book(symbol)
+        if orderbook is None:
+            raise HTTPException(
+                status_code=404, datail=f"Symbol `{symbol}` is not supported"
+            )
+        return orderbook
+
+    def _fetch_orders(self, order_ids: list[str]) -> list[dict]:
+        if self.exchange_instance.has["fetchOrders"]:
+            return self.exchange_instance.fetch_orders(order_ids)
+        orders = []
+        for order_id in order_ids:
+            orders.append(self.exchange_instance.fetch_order(order_id))
+        return orders
+
+    @lru_cache(maxsize=10)
+    def _fetch_cached_orderbook(self, symbol: str) -> dict:
+        return self.fetch_symbol_orderbook(symbol)
+
+    def _mark_closed_orders(self, orders: list[dict]) -> None:
+        self._fetch_cached_orderbook.cache_clear()
+        for order in orders:
+            orderbook = self._fetch_cached_orderbook(order["symbol"])
+            if order["side"] == "buy":
+                if order["price"] >= orderbook["asks"][0][0]:
+                    order["status"] = "closed"
+            else:
+                if order["price"] <= orderbook["bids"][0][0]:
+                    order["status"] = "closed"
+
+    def check_orders_closed(self, order_ids: list[str]) -> list[dict]:
+        orders = self._fetch_orders(order_ids)
+        if self.is_virtual():
+            self._mark_closed_orders(orders)
+        closed_orders = [order for order in orders if order["status"] == "closed"]
+        return closed_orders
 
 
 class ExchangesManager:

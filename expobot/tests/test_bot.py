@@ -1,23 +1,37 @@
 # mypy: no-disallow-untyped-decorators
 # pylint: disable=E0611,E0401
-import asyncio
-from typing import Generator
+
 
 import pytest
 from fastapi.testclient import TestClient
 from main import app
 from models.bot import BotModel
+from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel.pool import StaticPool
+from db import get_session
 
-from tortoise.contrib.test import finalizer, initializer
+@pytest.fixture(name="session")
+def session_fixture():
+    engine = create_engine(
+        "sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool
+    )
+    SQLModel.metadata.create_all(engine)
+    with Session(engine) as session:
+        yield session
 
+@pytest.fixture(name="client")  # 
+def client_fixture(session: Session):  # 
+    def get_session_override():  # 
+        return session
+    app.dependency_overrides[get_session] = get_session_override  # 
+    client = TestClient(app)  # 
+    yield client  # 
+    app.dependency_overrides.clear()  
 
-@pytest.fixture(scope="module")
-def client() -> Generator:
-    initializer(["models"])
-    with TestClient(app) as client:
-        yield client
-    finalizer()
-
+def test_database_is_empty(client: TestClient):  # nosec
+    response = client.get("/api/bots/")
+    assert response.status_code == 200, response.text
+    data = response.json([])
 
 def test_create_dummy_bot_1(client: TestClient):  # nosec
     response = client.post(
