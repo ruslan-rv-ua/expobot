@@ -1,5 +1,6 @@
 import enum
 from datetime import datetime
+from models.level import Level
 
 import settings
 from sqlmodel import Field, Relationship, SQLModel
@@ -41,7 +42,6 @@ class BotData(SQLModel):
     last_level: int
 
 
-
 class BotModel(BotData, table=True):
     """Database model for Bot"""
 
@@ -50,7 +50,6 @@ class BotModel(BotData, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     orders: list[OrderModel] = Relationship(back_populates="bot")
-
 
 
 class Bot(BotData):
@@ -64,6 +63,7 @@ class BotWithDetails(Bot):
 
     # TODO: add levels
     orders: list[Order]
+    levels: list[Level]
 
 
 class BotCreate(SQLModel):

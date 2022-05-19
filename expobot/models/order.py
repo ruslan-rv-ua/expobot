@@ -23,6 +23,7 @@ class OrderStatus(str, enum.Enum):
 
 
 class OrderBase(SQLModel):
+    order_id: str
     timestamp: int = Field(default=datetime.utcnow().timestamp())
     status: OrderStatus
     side: OrderSide

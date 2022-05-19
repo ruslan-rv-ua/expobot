@@ -124,7 +124,8 @@ class ExchangesManager:
     def clear_all_caches(self) -> None:
         """Clear all caches for all exchanges"""
         for exchange in self.__exchanges.values():
-            exchange.clear_caches()
+            if exchange is not None:
+                exchange.clear_caches()
 
 
 exchanges_manager: ExchangesManager = ExchangesManager(settings.EXCHANGE_ACCOUNTS)
