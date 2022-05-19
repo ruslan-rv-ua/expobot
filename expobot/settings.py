@@ -26,3 +26,5 @@ EXCHANGE_ACCOUNTS = {
         "api_secret": "",
     },
 }
+
+TICK_PERIOD = 6 # in seconds

@@ -1,11 +1,11 @@
-from db import get_session
 from fastapi import Depends, HTTPException
-from models.bot import Bot, BotCreate, BotModel, BotStatus, BotWithDetails
-from models.order import Order, OrderModel, OrderSide, OrderStatus
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
-from services.exchange import Exchange, exchanges_manager
+from models.bot import Bot, BotCreate, BotModel, BotStatus, BotWithDetails
+from models.order import Order, OrderModel, OrderSide, OrderStatus
+from .db import get_session
+from .exchange import Exchange, exchanges_manager
 
 
 class BotsManager:
@@ -96,7 +96,6 @@ class BotRunner:
         self, side: OrderSide | None = None, status: OrderStatus | None = None
     ) -> list[Order]:
         """Get all orders for bot"""
-        print('2'*1000)
         query = select(OrderModel).where(OrderModel.bot_id == self.id)
         if side is not None:
             query = query.where(Order.side == side)
@@ -104,3 +103,11 @@ class BotRunner:
             query = query.where(Order.status == status)
         orders = await self.session.execute(query)
         return [Order.from_orm(order) for order in orders.scalars()]
+
+
+    ###########################################################################
+    # tick management
+    ###########################################################################
+    async def tick(self, nonce:int) -> None:
+        """Handle tick"""
+        print(f">>>>>> tick {nonce}")

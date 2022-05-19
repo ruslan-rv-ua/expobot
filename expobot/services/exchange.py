@@ -3,6 +3,8 @@ import ccxt
 import settings
 from fastapi import HTTPException
 
+EXCHANGE_LRU_CACHE_SIZE = 10
+
 
 class Exchange:
     def __init__(
@@ -32,6 +34,12 @@ class Exchange:
     def __str__(self) -> str:
         return f'{"[VIRTUAL] " if self.is_virtual() else ""}{self.exchange}'
 
+    def clear_caches(self) -> None:
+        self.fetch_symbol_info.cache_clear()
+        self.fetch_symbol_ticker.cache_clear()
+        self.fetch_symbol_orderbook.cache_clear()
+
+    @lru_cache(maxsize=EXCHANGE_LRU_CACHE_SIZE)
     def fetch_symbol_info(self, symbol: str) -> dict:
         self.exchange_instance.load_markets()
         symbol_info = self.exchange_instance.markets.get(symbol)
@@ -41,6 +49,7 @@ class Exchange:
             )
         return symbol_info
 
+    @lru_cache(maxsize=EXCHANGE_LRU_CACHE_SIZE)
     def fetch_symbol_ticker(self, symbol: str) -> dict:
         ticker = self.exchange_instance.fetch_ticker(symbol)
         if ticker is None:
@@ -56,7 +65,9 @@ class Exchange:
             )
         return ticker
 
+    @lru_cache(maxsize=EXCHANGE_LRU_CACHE_SIZE)
     def fetch_symbol_orderbook(self, symbol: str) -> dict:
+        '''Get orderbook for the symbol'''
         orderbook = self.exchange_instance.fetch_order_book(symbol)
         if orderbook is None:
             raise HTTPException(
@@ -65,6 +76,7 @@ class Exchange:
         return orderbook
 
     def _fetch_orders(self, order_ids: list[str]) -> list[dict]:
+        '''Get list of orders from the list of orders ids'''
         if self.exchange_instance.has["fetchOrders"]:
             return self.exchange_instance.fetch_orders(order_ids)
         orders = []
@@ -72,14 +84,10 @@ class Exchange:
             orders.append(self.exchange_instance.fetch_order(order_id))
         return orders
 
-    @lru_cache(maxsize=10)
-    def _fetch_cached_orderbook(self, symbol: str) -> dict:
-        return self.fetch_symbol_orderbook(symbol)
-
-    def _mark_closed_orders(self, orders: list[dict]) -> None:
-        self._fetch_cached_orderbook.cache_clear()
+    def _mark_orders_closed(self, orders: list[dict]) -> None:
+        '''Mark orders as closed in the virtual exchange'''
         for order in orders:
-            orderbook = self._fetch_cached_orderbook(order["symbol"])
+            orderbook = self.fetch_symbol_orderbook(order["symbol"])
             if order["side"] == "buy":
                 if order["price"] >= orderbook["asks"][0][0]:
                     order["status"] = "closed"
@@ -88,9 +96,10 @@ class Exchange:
                     order["status"] = "closed"
 
     def check_orders_closed(self, order_ids: list[str]) -> list[dict]:
+        '''Get list of closed orders from the list of orders ids'''
         orders = self._fetch_orders(order_ids)
         if self.is_virtual():
-            self._mark_closed_orders(orders)
+            self._mark_orders_closed(orders)
         closed_orders = [order for order in orders if order["status"] == "closed"]
         return closed_orders
 
@@ -101,6 +110,7 @@ class ExchangesManager:
         self.__exchanges = dict.fromkeys(exchanges_config.keys(), None)
 
     def __getitem__(self, exchange_account) -> Exchange:
+        '''Get an exchange instance by its account name'''
         if exchange_account not in self.__exchanges:
             raise HTTPException(
                 status_code=404, detail=f"Exchange {exchange_account} not found"
@@ -110,6 +120,11 @@ class ExchangesManager:
                 **self.__exchanges_config[exchange_account]
             )
         return self.__exchanges[exchange_account]
+
+    def clear_all_caches(self) -> None:
+        """Clear all caches for all exchanges"""
+        for exchange in self.__exchanges.values():
+            exchange.clear_caches()
 
 
 exchanges_manager: ExchangesManager = ExchangesManager(settings.EXCHANGE_ACCOUNTS)
