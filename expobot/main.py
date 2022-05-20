@@ -1,6 +1,6 @@
 """
 TODO:
-    - separate exchange class into 2 classes:
+    - decouple exchange class into 2 classes:
         - exchange class for real exchanges
         - exchange class for virtual exchanges
     - place_order_* in services/exchange.py

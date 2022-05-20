@@ -19,7 +19,7 @@ EXCHANGE_ACCOUNTS = {
         "api_key": "",
         "api_secret": "",
     },
-    "fake_kuna": {
+    "fkuna": {
         "description": "Fake Kuna Account",
         "exchange": "kuna",
         "api_key": "",

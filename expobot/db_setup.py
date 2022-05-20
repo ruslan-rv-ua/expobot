@@ -34,6 +34,7 @@ def create_order(bot_id: int):
     with Session(engine) as session:
         order = OrderModel(
             bot_id=bot_id,
+            order_id="test",
             symbol="TRX/UAAH",
             side="buy",
             price=12.5,

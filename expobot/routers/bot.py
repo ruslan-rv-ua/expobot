@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, Response, status
 from models.bot import BotStatus, BotWithDetails, BotCreate
-from services.bot import BotRunner, BotsManager
+from services.bot import BotsManager
 from models.bot import Bot
 
 router = APIRouter(
@@ -19,7 +19,7 @@ async def get_bots(
 
 
 @router.get("/{bot_id}", response_model=BotWithDetails)
-async def get_bot(bot_service: BotRunner = Depends(BotRunner)):
+async def get_bot(bot_service: BotsManager = Depends()):
     """Get bot by id"""
     return await bot_service.get_bot_with_details()
 
@@ -34,7 +34,7 @@ async def create_bot(bot_data: BotCreate, bots_manager: BotsManager = Depends())
     "/{bot_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_bot(bot_runner: BotRunner = Depends(BotRunner)) -> Response:
+async def delete_bot(bot_runner: BotsManager = Depends()) -> Response:
     """Delete bot by id"""
     await bot_runner.delete_bot()
     return Response(status_code=status.HTTP_204_NO_CONTENT)  # TODO: fix this

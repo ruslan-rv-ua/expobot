@@ -38,6 +38,7 @@ class BotData(SQLModel):
 
     # state
     status: BotStatus
+    message: str | None = None
     last_price: float
     last_level: int
 

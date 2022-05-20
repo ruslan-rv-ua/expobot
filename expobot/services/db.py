@@ -5,15 +5,16 @@ from sqlmodel import SQLModel
 import settings
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
-async_session_class = sessionmaker(
-    bind=engine, class_=AsyncSession, expire_on_commit=False
+Session = sessionmaker(
+    bind=engine, class_=AsyncSession, expire_on_commit=True
 )
 
 
 async def get_session() -> AsyncSession:
-    async with async_session_class() as session:
+    async with Session() as session:
+        print('X'*1000)
         yield session
-
+        print('I'*1000)
 
 async def init_db():
     async with engine.begin() as conn:
