@@ -40,7 +40,7 @@ class BotData(SQLModel):
     status: BotStatus
     message: str | None = None
     last_price: float
-    last_level: int
+    last_floor: int
 
 
 class BotModel(BotData, table=True):

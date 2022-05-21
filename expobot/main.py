@@ -51,11 +51,17 @@ app.include_router(gui_router)
 async def startup():
     await init_db()
 
-# @app.on_event("startup")
-# @repeat_every(seconds=settings.TICK_PERIOD, raise_exceptions=True)
-# async def tick_periodic_task():
-#     print('----- tick_periodic_task -----')
-#     await tick()
+# TODO: move to services/bot.py?
+APP_ON = True
+
+@app.on_event("startup")
+@repeat_every(seconds=settings.TICK_PERIOD, raise_exceptions=True)
+async def tick_periodic_task():
+    global APP_ON
+    if not APP_ON:
+        return
+    print('----- tick_periodic_task -----')
+    await tick()
 
 
 if __name__ == "__main__":

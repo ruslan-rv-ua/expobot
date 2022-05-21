@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Path, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -29,18 +29,18 @@ async def bots_table_tbody(request: Request, bots_manager: BotsManager = Depends
         "partial/bots_table_tbody.html", {"request": request, "bots": bots}
     )
 
-@router.get("/{id}", response_class=HTMLResponse)
-async def show_bot(request: Request, bots_manager: BotsManager = Depends()):
-    bot = await bots_manager.get_bot_with_details()
 
+@router.get("/{bot_id}", response_class=HTMLResponse)
+async def show_bot(request: Request, bot_id: str):
     return templates.TemplateResponse(
-        "bot.html", {"request": request, "bot": bot}
+        "bot.html", {"request": request, "bot_id": bot_id}
     )
 
-@router.get("/partial/status/{id}", response_class=HTMLResponse)
-async def bot_status(request: Request, bots_manager: BotsManager = Depends()):
+
+@router.get("/partial/{bot_id}", response_class=HTMLResponse)
+async def bot_details(request: Request, bots_manager: BotsManager = Depends()):
     bot = await bots_manager.get_bot_with_details()
 
     return templates.TemplateResponse(
-        "partial/bot_status.html", {"request": request, "bot": bot}
+        "partial/bot_details.html", {"request": request, "bot": bot}
     )

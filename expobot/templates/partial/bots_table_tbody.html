@@ -14,7 +14,7 @@
         <tr class="{{ status_to_table_class(bot.status)}}">
             <th scope="row" ">
                 <h6>
-                    <a href="/bot/{{ bot.id }}">{{ bot.name }}</a>
+                    <a href="/{{ bot.id }}">{{ bot.name }}</a>
                 </h6>
                 {%- if bot.description -%}
                     <small>{{ bot.description }}</small>

@@ -19,7 +19,7 @@ class OrderStatus(str, enum.Enum):
 
     OPEN = "open"
     CLOSED = "closed"
-    CANCELLED = "cancelled"
+    CANCELED = "canceled"
 
 
 class OrderBase(SQLModel):

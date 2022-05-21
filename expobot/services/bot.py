@@ -6,7 +6,7 @@ from models.level import Level, LevelModel
 from models.bot import Bot, BotCreate, BotModel, BotStatus, BotWithDetails
 from models.order import Order, OrderModel, OrderSide, OrderStatus
 from .db import get_session
-from .exchange import exchanges_manager
+from .exchange.manager import exchanges_manager
 
 
 class BotsManager:
@@ -47,7 +47,6 @@ class BotsManager:
 
     async def create_bot(self, bot_data: BotCreate) -> Bot:
         """Create bot"""
-
         if (
             await self.session.execute(
                 select(BotModel).where(BotModel.name == bot_data.name)
@@ -67,7 +66,7 @@ class BotsManager:
             taker=taker,
             maker=maker,
             total_level_height=total_level_height,
-            last_level=0,
+            last_floor=0,
             last_price=0,
         )
         self.session.add(bot)
@@ -84,7 +83,7 @@ class BotsManager:
         self, side: OrderSide | None = None, status: OrderStatus | None = None
     ) -> list[Order]:
         """Get all orders for bot"""
-        query = select(OrderModel).where(OrderModel.bot_id == self.id)
+        query = select(OrderModel).where(OrderModel.bot_id == self.id).order_by(OrderModel.timestamp)
         if side is not None:
             query = query.where(Order.side == side)
         if status is not None:
@@ -95,7 +94,7 @@ class BotsManager:
 
     async def get_levels(self) -> list[Level]:
         """Get all levels"""
-        query = select(LevelModel).where(LevelModel.bot_id == self.id)
+        query = select(LevelModel).where(LevelModel.bot_id == self.id).order_by(LevelModel.floor)
         levels_scalars = (await self.session.execute(query)).scalars()
         levels = [Level.from_orm(level) for level in levels_scalars]
         # delete empty levels at the top and bottom

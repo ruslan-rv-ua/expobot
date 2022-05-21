@@ -12,9 +12,7 @@ Session = sessionmaker(
 
 async def get_session() -> AsyncSession:
     async with Session() as session:
-        print('X'*1000)
         yield session
-        print('I'*1000)
 
 async def init_db():
     async with engine.begin() as conn:

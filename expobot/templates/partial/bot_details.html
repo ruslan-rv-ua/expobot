@@ -1,0 +1,33 @@
+{% set RELOAD_EVERY_SECONDS=5 %}
+<div id="bot-details"
+     hx-trigger="every {{ RELOAD_EVERY_SECONDS }}s"
+     hx-get="/partial/{{ bot.id }}"
+     hx-swap="outerHTML">
+    <h1>{{ bot.name }}</h1>
+    <h2>last level = {{ bot.last_floor }}, last price = {{ bot.last_price }}</h2>
+    <hr>
+    <h2>Levels</h2>
+    <table class="table table-bordered table-sm" table-dark>
+        <thead>
+            <th scope="col">Level</th>
+            <th scope="col">Buy order, amount</th>
+            <th scope="col">Sell order, amount</th>
+            <th scope="col">Price</th>
+        </thead>
+        <tbody>
+            {% for level in bot.levels[::-1] %}
+                <tr{{ ' class=table-primary' if level.floor == bot.last_floor }}>
+                    <th>{{ level.floor }}</th>
+                    <td{{' class=table-success' if level.buy_amount }}>
+                        <!-- {{ level.buy_amount if level.buy_amount }} -->
+                        {{ level.buy_status }}
+                    </td>
+                    <td{{' class=table-danger' if level.sell_amount }}>
+                        <!-- {{ level.sell_amount if level.sell_amount }} -->
+                        {{ level.sell_status }}
+                    </td>
+                    <td align="center">{{ level.price }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
