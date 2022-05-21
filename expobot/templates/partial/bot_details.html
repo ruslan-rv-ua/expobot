@@ -4,7 +4,7 @@
      hx-get="/partial/{{ bot.id }}"
      hx-swap="outerHTML">
     <h1>{{ bot.name }}</h1>
-    <h2>last level = {{ bot.last_floor }}, last price = {{ bot.last_price }}</h2>
+    <h2 role="alert" aria-live="assertive">last level = {{ bot.last_floor }}, last price = {{ bot.last_price }}</h2>
     <hr>
     <h2>Levels</h2>
     <table class="table table-bordered table-sm" table-dark>

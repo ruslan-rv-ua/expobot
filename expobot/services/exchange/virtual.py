@@ -1,9 +1,9 @@
-from select import select
 import uuid
+from sqlmodel import select
 from .base import ExchangeBase
 import ccxt
 from services.db import Session
-from models.order import OrderModel, OrderStatus
+from models.order import OrderModel
 
 
 class VirtualExchange(ExchangeBase):
@@ -14,14 +14,21 @@ class VirtualExchange(ExchangeBase):
         self.exchange_instance: ccxt.Exchange = self.exchange_class()
 
     async def fetch_orders(self, order_ids: list[str]) -> list[dict]:
+        """Fetch orders"""
         async with Session() as session:
-            query = select([OrderModel]).where(OrderModel.id.in_(order_ids))
-            orders = list(await session.execute(query).scalars())
-        orders_dicts = [order.to_dict() for order in orders]
+            query = select(OrderModel).where(OrderModel.order_id.in_(order_ids))
+            result = await session.execute(query)
+        orders_dicts = [OrderModel.from_orm(order).dict() for order in result.scalars()]
+        if not orders_dicts:
+            return []
+        for order_dict in orders_dicts:
+            order_dict["id"] = order_dict["order_id"]
 
         """Mark orders as closed"""
-        orderbook = self.fetch_symbol_orderbook(orders[0]["symbol"])
-        for order_dict in orders_dicts:    
+        orderbook = self.fetch_symbol_orderbook(orders_dicts[0]["symbol"])
+        for order_dict in orders_dicts:
+            if order_dict["status"] != "open":
+                continue
             if order_dict["side"] == "buy":
                 if order_dict["price"] >= orderbook["asks"][0][0]:
                     order_dict["status"] = "closed"
@@ -48,3 +55,8 @@ class VirtualExchange(ExchangeBase):
             cost=amount * price,
         )
         return order
+
+    def cancel_order(self, order_id: str, symbol: str | None = None) -> dict:
+        """Cancel order"""
+        # TODO: !!! implement
+        return dict(id=order_id, status="canceled")

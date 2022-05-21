@@ -5,7 +5,7 @@ from sqlmodel import SQLModel
 import settings
 
 engine = create_async_engine(settings.DATABASE_URL, echo=False, future=True)
-Session = sessionmaker(
+Session: AsyncSession = sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=True
 )
 
@@ -13,6 +13,7 @@ Session = sessionmaker(
 async def get_session() -> AsyncSession:
     async with Session() as session:
         yield session
+
 
 async def init_db():
     async with engine.begin() as conn:

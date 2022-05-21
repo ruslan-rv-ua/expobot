@@ -66,3 +66,7 @@ class ExchangeBase:
     def cancel_order(self, order_id: str) -> None:
         """Cancel order"""
         raise NotImplementedError
+
+    def cancel_order(self, order_id: str) -> None:
+        """Cancel order"""
+        raise NotImplementedError

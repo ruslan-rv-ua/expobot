@@ -34,3 +34,7 @@ class RealExchange(ExchangeBase):
         return self.exchange_instance.create_order(
             symbol=symbol, type=type, side=side, amount=amount, price=price
         )
+
+    def cancel_order(self, symbol: str, order_id: str) -> dict:
+        """Cancel order"""
+        return self.exchange_instance.cancel_order(symbol=symbol, order_id=order_id)
