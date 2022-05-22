@@ -34,7 +34,7 @@ async def create_bot(bot_data: BotCreate, bots_manager: BotsManager = Depends())
     "/{bot_id}",
     status_code=status.HTTP_204_NO_CONTENT,
 )
-async def delete_bot(bot_runner: BotsManager = Depends()) -> Response:
+async def delete_bot(bots_manager: BotsManager = Depends()) -> Response:
     """Delete bot by id"""
-    await bot_runner.delete_bot()
+    await bots_manager.delete_bot()
     return Response(status_code=status.HTTP_204_NO_CONTENT)  # TODO: fix this

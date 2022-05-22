@@ -1,17 +1,20 @@
+from multiprocessing.connection import wait
 from sqlmodel import select
 from services.calculations import floor_to_price, price_to_floor
 from models.level import LevelModel, LevelStatus
 
 from models.bot import Bot, BotModel, BotStatus
-from models.order import Order, OrderModel, OrderSide, OrderStatus
+from models.order import Order, OrderSide, OrderStatus
 from .db import Session
 from .exchange.base import ExchangeBase
+from .order import Orders
 
 
 class BotRunner:
     def __init__(self, bot_data: Bot, exchange: ExchangeBase) -> None:
         self.bot_data = bot_data
         self.exchange = exchange
+        self.orders = Orders(bot_data=bot_data, exchange=exchange)
 
     def _price_to_floor(self, price: float) -> int:
         """Convert price to floor"""
@@ -31,11 +34,9 @@ class BotRunner:
 
     async def _get_bot(self) -> BotModel:
         """Get bot"""
-        bot = (
-            await self.session.query(BotModel)
-            .where(BotModel.id == self.bot_data.id)
-            .scalar_one_or_none()
-        )
+        async with Session() as session:
+            query = select(BotModel).where(BotModel.id == self.bot_data.id)
+            bot = (await session.execute(query)).scalar_one_or_none()
         if bot is None:
             raise Exception(f"Bot {self.bot_data.id} not found")
         return bot
@@ -66,17 +67,6 @@ class BotRunner:
     ###########################################################################
     # order management
     ###########################################################################
-
-    async def _get_order(self, order_id: str) -> OrderModel:
-        """Get order"""
-        async with Session() as session:
-            query = select(OrderModel).where(
-                OrderModel.bot_id == self.bot_data.id, OrderModel.order_id == order_id
-            )
-            order = (await session.execute(query)).scalar_one_or_none()
-            if order is None:
-                raise Exception(f"Order {order_id} not found")
-            return order
 
     async def can_place_buy_order(self, floor: int) -> bool:
         level = await self._get_level(floor)
@@ -109,117 +99,38 @@ class BotRunner:
                     f"Can't place sell order for this level: {floor}",
                 )
 
-        level = await self._get_level(floor)
-
         try:
-            exchange_order: dict = self.exchange.place_order(
-                symbol=self.bot_data.symbol,
-                type="limit",
-                side=str(side),
-                price=level.price,
+            order = await self.orders.place_order(
+                side=side,
                 amount=amount,
+                price=self._floor_to_price(floor),
             )
         except Exception as e:
-            self.stop(message=str(e))
+            await self.stop(message=str(e))
             return
 
-        fee_data: dict = exchange_order.get("fee")
-        if fee_data is not None:
-            fee = dict(
-                fee_cost=fee_data.get("cost"),
-                fee_currency=fee_data.get("currency"),
-                fee_rate=fee_data.get("rate"),
-            )
-        else:
-            fee = dict(fee_cost=0, fee_currency="UNKNOWN", fee_rate=0)
-
+        level = await self._get_level(floor)
         async with Session() as session:
-            order = OrderModel(
-                bot_id=self.bot_data.id,
-                order_id=exchange_order["id"],
-                timestamp=exchange_order.get("timestamp"),
-                status=OrderStatus.OPEN,
-                side=side,
-                symbol=exchange_order["symbol"],
-                price=exchange_order.get("price"),
-                average=exchange_order.get("average"),
-                amount=exchange_order.get("amount"),
-                cost=exchange_order.get("cost"),
-                **fee,
-            )
-            session.add(order)
             if side == OrderSide.BUY:
-                level.set_buy_order(order_id=exchange_order["id"], amount=order.amount)
+                level.set_buy_order(order_id=order.order_id, amount=order.amount)
             elif side == OrderSide.SELL:
-                level.set_sell_order(order_id=exchange_order["id"], amount=order.amount)
+                level.set_sell_order(order_id=order.order_id, amount=order.amount)
             session.add(level)
             await session.commit()
-            await session.refresh(order)
-            return order
+        return order
 
-    async def _cancel_opened_buy_level(self, floor: int) -> LevelModel:
-        """Cancel opened buy order"""
-        async with Session() as session:
-            query = select(LevelModel.buy_order_id).where(
-                LevelModel.bot_id == self.bot_data.id, LevelModel.floor == floor
-            )
-            order_id = (await session.execute(query)).scalar_one()
-        assert order_id is not None, "Can't cancel buy order"
+    async def _cancel_opened_buy_order_at_level(self, floor: int) -> LevelModel:
+        level = await self._get_level(floor)
         try:
-            canceled_order = self.exchange.cancel_order(
-                symbol=self.bot_data.symbol, order_id=order_id
-            )
+            await self.orders.cancel_order(order_id=level.buy_order_id)
         except Exception as e:
-            self.stop(message=str(e))
-            return
-        if canceled_order.get("status") != "canceled":
-            self.stop(message=f"Can't cancel buy order: {canceled_order}")
+            await self.stop(message=str(e))
             return
         async with Session() as session:
             # update level
             level = await self._get_level(floor)
             level.clear_buy_order()
             session.add(level)
-            # update order
-            order = await self._get_order(order_id)
-            order.status = OrderStatus.CANCELED
-            session.add(order)
-            await session.commit()
-            await session.refresh(order)
-            return level
-
-    async def _update_open_buy_orders(self) -> None:
-        """Sync orders in database with orders in exchange"""
-        async with Session() as session:
-            query = select(LevelModel.buy_order_id).where(
-                LevelModel.bot_id == self.bot_data.id,
-                LevelModel.buy_status == LevelStatus.OPEN,
-            )
-            order_ids = list((await session.execute(query)).scalars())
-        exchange_orders = await self.exchange.fetch_orders(order_ids=order_ids)
-        async with Session() as session:
-            for ex_order in exchange_orders:
-                if ex_order["status"] == "open":
-                    continue
-                if ex_order["status"] != "closed":
-                    self.stop(
-                        message=f"Order {ex_order['id']} has wrong status: {ex_order['status']}"
-                    )
-                    continue
-                # update level
-                query = select(LevelModel).where(
-                    LevelModel.bot_id == self.bot_data.id,
-                    LevelModel.buy_order_id == ex_order["id"],
-                )
-                level = (await session.execute(query)).scalar_one()
-                level.buy_status = LevelStatus.CLOSED
-                session.add(level)
-                # update order
-                order = await self._get_order(ex_order["id"])
-                order.status = OrderStatus.CLOSED
-                order.average = ex_order["average"]
-                order.cost = ex_order["cost"]
-                session.add(order)
             await session.commit()
 
     ###########################################################################
@@ -255,16 +166,57 @@ class BotRunner:
         await self._update_last_price()
         print(f"{self.bot_data.name} >>>>>> tick {self.last_price}")
 
-        await self._update_open_buy_orders()
-        # await self._update_open_sell_orders()
-
-        # await self._process_closed_buy_orders()
-        # await self._process_closed_sell_orders()
+        await self.orders.update_open_orders()
+        await self._process_closed_buy_orders()
+        await self._process_closed_sell_orders()
 
         await self._buy_current_floor_and_down()
-        await self._buy_current_floor_and_up()
+        await self._buy_above_current_floor()
 
-        await self._cancel_excess_buy_orders()
+        # await self._cancel_excess_buy_orders()
+
+    ###########################################################################
+    # trade logic
+    ###########################################################################
+
+    async def _process_closed_buy_orders(self) -> None:
+        """Process closed buy orders"""
+        async with Session() as session:
+            query = select(LevelModel).where(
+                LevelModel.bot_id == self.bot_data.id,
+                LevelModel.buy_status == LevelStatus.OPEN,
+            )
+            result = await session.execute(query)
+            levels_to_check = list(result.scalars())
+            for level in levels_to_check:
+                order = await self.orders.get(level.buy_order_id)
+                if order.status == OrderStatus.CLOSED:
+                    # place sell order at next level
+                    await self.place_order_at_level(
+                        level.floor + 1, OrderSide.SELL, level.buy_amount
+                    )  # TODO: add maker fee
+                    # update level
+                    level.clear_buy_order()
+                    self.debug(f"level = {level}")
+                    session.add(level)
+            await session.commit()
+
+    async def _process_closed_sell_orders(self) -> None:
+        """Process closed sell orders"""
+        async with Session() as session:
+            query = select(LevelModel).where(
+                LevelModel.bot_id == self.bot_data.id,
+                LevelModel.sell_status == LevelStatus.OPEN,
+            )
+            result = await session.execute(query)
+            levels_to_check = list(result.scalars())
+            for level in levels_to_check:
+                order = await self.orders.get(level.sell_order_id)
+                if order.status == OrderStatus.CLOSED:
+                    # update level
+                    level.clear_sell_order()
+                    session.add(level)
+            await session.commit()
 
     async def _buy_current_floor_and_down(self) -> None:
         """If current floor and under are not open buy,
@@ -278,7 +230,7 @@ class BotRunner:
                     amount=self.bot_data.trade_amount,
                 )
 
-    async def _buy_current_floor_and_up(self) -> None:
+    async def _buy_above_current_floor(self) -> None:
         """If current floor+1 and above are not open buy,
         then we need to place buy orders"""
         for offsset in range(self.bot_data.buy_up_levels):
@@ -304,7 +256,7 @@ class BotRunner:
             excess_buy_floors = list((await session.execute(query)).scalars())
         for floor in excess_buy_floors:
             print(f"***** Canceling excess buy order: {floor}")
-            await self._cancel_opened_buy_level(floor)
+            await self._cancel_opened_buy_order_at_level(floor)
 
     ###########################################################################
     # bot control
@@ -325,6 +277,8 @@ class BotRunner:
 
     async def stop(self, message: str = None) -> Bot:
         """Stop bot"""
+        if message:
+            self.debug(message)
         async with Session() as session:
             bot = await self._get_bot()
             if bot.status == BotStatus.RUNNING:
@@ -336,3 +290,14 @@ class BotRunner:
                 return bot
             else:
                 raise Exception(f"Bot {bot.id} already stopped")
+
+    def debug(self, message: str, stop: bool = False) -> None:
+        """Debug message"""
+        from winsound import Beep
+
+        print('-----')
+        print(f"{self.bot_data.name} >>>>>> {message}")
+        print("\n" * 5)
+        Beep(1000, 1000)
+        if stop:
+            exit()
