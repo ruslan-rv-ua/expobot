@@ -4,7 +4,7 @@
      hx-get="/partial/{{ bot.id }}"
      hx-swap="outerHTML">
     <h1>
-        {{ bot.last_price if bot.status == 'running' else '[STOPPED]' }}
+        <span id="header-last-price" aria-live="polite">{{ bot.last_price }}</span>
         &nbsp;{{ bot.symbol }} @ {{ bot.exchange_account }}
     </h1>
     <hr>
@@ -31,5 +31,35 @@
                     <td align="center">{{ level.price }}</td>
                 </tr>
             {% endfor %}
-        </table>
-    </div>
+        </tbody>
+    </table>
+    <hr>
+    <h2>Statistics</h2>
+    <table class="table table-sm table-bordered table-dark">
+        <tbody>
+            <tr>
+                <th scope="row">{{ stats.base }} balance</th>
+                <td>{{ stats.base_balance }}</td>
+                <td></td>
+            </tr>
+            <tr>
+                <th scope="row">{{ stats.quote }} balance</th>
+                <td>{{ stats.quote_balance }}</td>
+                <td></td>
+            </tr>
+            <tr>
+                <th scope="row">{{ stats.quote }} Profit, {{stats.quote}}</th>
+                <td>{{ stats.profit }}</td>
+                <td>
+                    If you sell all {{ stats.base_balance }} {{ stats.base }}
+                    at {{ bot.last_price }} {{ stats.quote }}
+                </td>
+            </tr>
+            <tr>
+                <th scope="row">Profit, %</th>
+                <td>{{ stats.profit_percent }}</td>
+                <td></td>
+            </tr>
+        </tbody>
+    </table>
+</div>

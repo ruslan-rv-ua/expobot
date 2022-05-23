@@ -10,17 +10,24 @@ DEFAULT_BUY_DOWN_LEVELS = 3
 # DATABASE_URL = "sqlite://:memory:"
 # DATABASE_URL = f"sqlite:///./database_expobot.db"
 DATABASE_URL = f"sqlite+aiosqlite:///database_expobot.db"
+# DATABASE_URL = f"sqlite+aiosqlite://"
 
 
 EXCHANGE_ACCOUNTS = {
-    "binance_main_account": {
-        "description": "Binance Main Account",
+    "Backtest Binance": {
+        # "type": "backtest",
+        "type": "virtual",
+        "description": "Backtest account for testing",
         "exchange": "binance",
-        "api_key": "",
-        "api_secret": "",
     },
-    "fkuna": {
-        "description": "Fake Kuna Account",
+    "Virtual Kuna": {
+        "type": "virtual",
+        "description": "Virtual account for testing",
+        "exchange": "kuna",
+    },
+    "Real Kuna": {
+        "type": "real",
+        "description": "Real account on Kuna for trading",
         "exchange": "kuna",
         "api_key": "",
         "api_secret": "",

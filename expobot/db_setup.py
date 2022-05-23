@@ -56,5 +56,6 @@ if __name__ == "__main__":
     delete_all_bots()
     delete_all_orders()
     delete_all_levels()
-    create_bot(exchange_account="binance_main_account", symbol="DOT/USDT", level_height=0.01)
-    create_bot(exchange_account="fkuna", symbol="USDT/UAH")
+    bot = create_bot(exchange_account="Backtest Binance", symbol="DOT/USDT", level_height=0.1)
+    print(bot)
+    # create_bot(exchange_account="Virtual Kuna", symbol="USDT/UAH")

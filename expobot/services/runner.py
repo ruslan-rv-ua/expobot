@@ -18,45 +18,46 @@ async def get_bot_runner(bot_id: int) -> "BotRunner":
     global __bot_runners_cache
     async with Session() as session:
         if bot_id not in __bot_runners_cache:
-            result = await session.execute(
+            bot = (await session.execute(
                 select(BotModel).where(BotModel.id == bot_id)
-            )
-            __bot_runners_cache[bot_id] = BotRunner(bot_data=result.scalar_one())
+            )).scalar_one_or_none()
+            if bot is None:
+                raise ValueError(f"Bot with id {bot_id} not found")
+            __bot_runners_cache[bot_id] = BotRunner(bot=bot)
         return __bot_runners_cache[bot_id]
 
 
 class BotRunner:
-    def __init__(self, bot_data: Bot) -> None:
-        self.bot_data = bot_data
+    def __init__(self, bot: Bot) -> None:
+        self.bot = bot  # TODO: remove self._get_bot()
         self.exchange = exchanges_manager.get(
-            exchange_account=self.bot_data.exchange_account
+            exchange_account=self.bot.exchange_account
         )
-        self.orders = Orders(bot_data=bot_data, exchange=self.exchange)
+        self.orders = Orders(bot_data=bot, exchange=self.exchange)
 
     def _price_to_floor(self, price: float) -> int:
         """Convert price to floor"""
         return price_to_floor(
             price=price,
-            level_height=self.bot_data.total_level_height,
-            level_0_price=self.bot_data.level_0_price,
+            level_height=self.bot.total_level_height,
+            level_0_price=self.bot.level_0_price,
         )
 
     def _floor_to_price(self, floor: int) -> float:
         """Convert floor to price"""
         return floor_to_price(
             floor=floor,
-            level_height=self.bot_data.total_level_height,
-            level_0_price=self.bot_data.level_0_price,
+            level_height=self.bot.total_level_height,
+            level_0_price=self.bot.level_0_price,
         )
 
     async def _get_bot(self) -> BotModel:
         """Get bot"""
         async with Session() as session:
-            query = select(BotModel).where(BotModel.id == self.bot_data.id)
-            bot = (await session.execute(query)).scalar_one_or_none()
-        if bot is None:
-            raise Exception(f"Bot {self.bot_data.id} not found")
-        return bot
+            # query = select(BotModel).where(BotModel.id == self.bot.id)
+            # bot = (await session.execute(query)).scalar_one()
+            await session.refresh(self.bot)
+        return self.bot
 
     ###########################################################################
     # level management
@@ -66,13 +67,13 @@ class BotRunner:
         """Get level"""
         async with Session() as session:
             query = select(LevelModel).where(
-                LevelModel.bot_id == self.bot_data.id, LevelModel.floor == floor
+                LevelModel.bot_id == self.bot.id, LevelModel.floor == floor
             )
             level = (await session.execute(query)).scalar_one_or_none()
             if level is not None:
                 return level
         level = LevelModel(
-            bot_id=self.bot_data.id,
+            bot_id=self.bot.id,
             floor=floor,
             price=self._floor_to_price(floor),
         )
@@ -157,11 +158,11 @@ class BotRunner:
     async def _fetch_ticker(self) -> dict:
         """Fetch ticker"""
         ticker = self.exchange.fetch_symbol_ticker(
-            symbol=self.bot_data.symbol
+            symbol=self.bot.symbol
         )  # TODO: add error handling
         return ticker
 
-    async def _update_last_price(self) -> dict:
+    async def _update_last_price_and_floor(self) -> dict:
         """Update ticker"""
         self.last_price = (
             self.ticker.get("last")
@@ -170,26 +171,29 @@ class BotRunner:
         )
         self.last_floor = self._price_to_floor(self.last_price)
         async with Session() as session:
-            query = select(BotModel).where(BotModel.id == self.bot_data.id)
+            # TODO: !!!
+            query = select(BotModel).where(BotModel.id == self.bot.id)
             bot = (await session.execute(query)).scalar_one()
             bot.last_price = self.last_price
             bot.last_floor = self.last_floor
             session.add(bot)
             await session.commit()
 
-    async def tick(
-        self, ignore_status: bool = True, ticker: dict | None = None
-    ) -> None:
+    async def tick(self, last_price: float | None = None) -> None:
         """Handle tick"""
+        is_backtest = last_price is not None
+        if is_backtest:
+            self.ticker = {'last': last_price}
+            self.exchange.set_last_price(last_price)
+        else:
+            self.ticker = await self._fetch_ticker()
+        await self._update_last_price_and_floor()
         await self.orders.update_open_orders()
         await self._process_closed_buy_orders()
         await self._process_closed_sell_orders()
 
-        if ignore_status or self.bot_data.status == BotStatus.RUNNING:
-            self.ticker = ticker if ticker else await self._fetch_ticker()
-            await self._update_last_price()
-            print(f"{self.bot_data.name} >>>>>> tick {self.last_price}")
-
+        if self.bot.status == BotStatus.RUNNING:
+        # if True: # TODO: !!! remove
             # trade logic
             await self._buy_current_floor_and_down()
             await self._buy_above_current_floor()
@@ -204,7 +208,7 @@ class BotRunner:
         """Process closed buy orders"""
         async with Session() as session:
             query = select(LevelModel).where(
-                LevelModel.bot_id == self.bot_data.id,
+                LevelModel.bot_id == self.bot.id,
                 LevelModel.buy_status == LevelStatus.OPEN,
             )
             result = await session.execute(query)
@@ -226,7 +230,7 @@ class BotRunner:
         """Process closed sell orders"""
         async with Session() as session:
             query = select(LevelModel).where(
-                LevelModel.bot_id == self.bot_data.id,
+                LevelModel.bot_id == self.bot.id,
                 LevelModel.sell_status == LevelStatus.OPEN,
             )
             result = await session.execute(query)
@@ -242,25 +246,25 @@ class BotRunner:
     async def _buy_current_floor_and_down(self) -> None:
         """If current floor and under are not open buy,
         then we need to place buy orders"""
-        for offsset in range(self.bot_data.buy_down_levels):
+        for offsset in range(self.bot.buy_down_levels):
             target_floor = self.last_floor - offsset
             if await self.can_place_buy_order(target_floor):
                 await self.place_order_at_level(
                     floor=target_floor,
                     side=OrderSide.BUY,
-                    amount=self.bot_data.trade_amount,
+                    amount=self.bot.trade_amount,
                 )
 
     async def _buy_above_current_floor(self) -> None:
         """If current floor+1 and above are not open buy,
         then we need to place buy orders"""
-        for offsset in range(self.bot_data.buy_up_levels):
+        for offsset in range(self.bot.buy_up_levels):
             target_floor = self.last_floor + offsset + 1
             if await self.can_place_buy_order(target_floor):
                 await self.place_order_at_level(
                     floor=target_floor,
                     side=OrderSide.BUY,
-                    amount=self.bot_data.trade_amount,
+                    amount=self.bot.trade_amount,
                 )
 
     async def _cancel_excess_buy_orders(self) -> None:
@@ -268,9 +272,9 @@ class BotRunner:
             query = (
                 select(LevelModel.floor)
                 .where(
-                    LevelModel.bot_id == self.bot_data.id,
+                    LevelModel.bot_id == self.bot.id,
                     LevelModel.buy_status == LevelStatus.OPEN,
-                    LevelModel.floor < self.last_floor - self.bot_data.buy_down_levels,
+                    LevelModel.floor < self.last_floor - self.bot.buy_down_levels,
                 )
                 .order_by(LevelModel.floor)
             )
@@ -322,16 +326,15 @@ class BotRunner:
             bot.message_datetime = datetime.now()
             session.add(bot)
             await session.commit()
-            print(f"{message} @ {self.bot_data.name}")
+            print(f"{message} @ {self.bot.name}")
 
     def debug(self, message: str, stop: bool = False) -> None:
         """Debug message"""
 
-        from winsound import Beep
-
         print("-----")
-        print(f"{self.bot_data.name} >>>>>> {message}")
+        print(f"{self.bot.name} >>>>>> {message}")
         print("\n" * 5)
-        Beep(1000, 1000)
+        from winsound import Beep
+        Beep(1000, 300)
         if stop:
             exit()

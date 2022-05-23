@@ -1,8 +1,11 @@
 """
 TODO:
-    - level 0 price
-    - tiemstamp for last update
     - backtesting
+    - statistics
+    - start/stop
+    - logging
+    - change `Exception` to own exceptions
+    - level 0 price
     - GUI for bot:
         - bots list view
             - remove 'description' column
@@ -49,7 +52,7 @@ async def startup():
 
 # TODO: move to services/bot.py?
 APP_ON = True
-# APP_ON = False
+APP_ON = False
 
 @app.on_event("startup")
 @repeat_every(seconds=settings.TICK_PERIOD, raise_exceptions=True)

@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, Response, status
+from services.runner import BotRunner, get_bot_runner
 from models.bot import BotStatus, BotWithDetails, BotCreate
 from services.bot import BotsManager
 from models.bot import Bot
@@ -19,9 +20,9 @@ async def get_bots(
 
 
 @router.get("/{bot_id}", response_model=BotWithDetails)
-async def get_bot(bot_service: BotsManager = Depends()):
+async def get_bot(bots_manager: BotsManager = Depends()):
     """Get bot by id"""
-    return await bot_service.get_bot_with_details()
+    return await bots_manager.get_bot_with_details()
 
 
 @router.post("/", response_model=Bot)
@@ -38,3 +39,12 @@ async def delete_bot(bots_manager: BotsManager = Depends()) -> Response:
     """Delete bot by id"""
     await bots_manager.delete_bot()
     return Response(status_code=status.HTTP_204_NO_CONTENT)  # TODO: fix this
+
+
+@router.get("/{bot_id}/tick", status_code=status.HTTP_200_OK)
+async def tick(
+    last_price: float | None = None, bot_runner: BotRunner = Depends(get_bot_runner)
+):
+    """Tick"""
+    await bot_runner.tick(last_price)
+    return Response(status_code=status.HTTP_200_OK)
