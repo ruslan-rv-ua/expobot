@@ -1,22 +1,14 @@
-from datetime import datetime
+from models.bot import BotModel
+from sqlmodel import select
 
-
-from .bot import BotsManager
-from .runner import BotRunner
 from .db import Session
-from .exchange.manager import exchanges_manager
-
-
-# TODO: remove this
-def get_nonce():
-    return int(datetime.now().timestamp() * 1000)
+from .runner import get_bot_runner
 
 
 async def tick():
-    exchanges_manager.clear_all_caches()
+    query = select(BotModel.id)
     async with Session() as session:
-        bots_data = await BotsManager(session=session).get_bots()
-    for bot_data in bots_data:
-        exchange = exchanges_manager[bot_data.exchange_account]
-        bot_runner = BotRunner(bot_data=bot_data, exchange=exchange)
+        result = await session.execute(query)
+    for bot_id in result.scalars():
+        bot_runner = await get_bot_runner(bot_id)
         await bot_runner.tick()

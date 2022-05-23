@@ -1,20 +1,37 @@
-from multiprocessing.connection import wait
-from sqlmodel import select
-from services.calculations import floor_to_price, price_to_floor
-from models.level import LevelModel, LevelStatus
-
+import datetime
 from models.bot import Bot, BotModel, BotStatus
+from models.level import LevelModel, LevelStatus
 from models.order import Order, OrderSide, OrderStatus
+from sqlmodel import select
+
+from .calculations import floor_to_price, price_to_floor
 from .db import Session
-from .exchange.base import ExchangeBase
+from .exchange.manager import exchanges_manager
 from .order import Orders
+from functools import cache
+
+__bot_runners_cache = {}
+
+
+async def get_bot_runner(bot_id: int) -> "BotRunner":
+    """Get bot runner by bot id"""
+    global __bot_runners_cache
+    async with Session() as session:
+        if bot_id not in __bot_runners_cache:
+            result = await session.execute(
+                select(BotModel).where(BotModel.id == bot_id)
+            )
+            __bot_runners_cache[bot_id] = BotRunner(bot_data=result.scalar_one())
+        return __bot_runners_cache[bot_id]
 
 
 class BotRunner:
-    def __init__(self, bot_data: Bot, exchange: ExchangeBase) -> None:
+    def __init__(self, bot_data: Bot) -> None:
         self.bot_data = bot_data
-        self.exchange = exchange
-        self.orders = Orders(bot_data=bot_data, exchange=exchange)
+        self.exchange = exchanges_manager.get(
+            exchange_account=self.bot_data.exchange_account
+        )
+        self.orders = Orders(bot_data=bot_data, exchange=self.exchange)
 
     def _price_to_floor(self, price: float) -> int:
         """Convert price to floor"""
@@ -160,20 +177,24 @@ class BotRunner:
             session.add(bot)
             await session.commit()
 
-    async def tick(self, ticker: dict | None = None) -> None:
+    async def tick(
+        self, ignore_status: bool = True, ticker: dict | None = None
+    ) -> None:
         """Handle tick"""
-        self.ticker = ticker if ticker else await self._fetch_ticker()
-        await self._update_last_price()
-        print(f"{self.bot_data.name} >>>>>> tick {self.last_price}")
-
         await self.orders.update_open_orders()
         await self._process_closed_buy_orders()
         await self._process_closed_sell_orders()
 
-        await self._buy_current_floor_and_down()
-        await self._buy_above_current_floor()
+        if ignore_status or self.bot_data.status == BotStatus.RUNNING:
+            self.ticker = ticker if ticker else await self._fetch_ticker()
+            await self._update_last_price()
+            print(f"{self.bot_data.name} >>>>>> tick {self.last_price}")
 
-        # await self._cancel_excess_buy_orders()
+            # trade logic
+            await self._buy_current_floor_and_down()
+            await self._buy_above_current_floor()
+
+            # await self._cancel_excess_buy_orders()
 
     ###########################################################################
     # trade logic
@@ -271,9 +292,10 @@ class BotRunner:
                 session.add(bot)
                 await session.commit()
                 await session.refresh(bot)
-                return bot
             else:
                 raise Exception(f"Bot {bot.id} already running")
+            self.message("Started")
+            return bot
 
     async def stop(self, message: str = None) -> Bot:
         """Stop bot"""
@@ -287,15 +309,27 @@ class BotRunner:
                 session.add(bot)
                 await session.commit()
                 await session.refresh(bot)
-                return bot
             else:
                 raise Exception(f"Bot {bot.id} already stopped")
+            self.message("Stopped")
+            return bot
+
+    async def message(self, message: str) -> None:
+        """Set message"""
+        async with Session() as session:
+            bot = await self._get_bot()
+            bot.message = message
+            bot.message_datetime = datetime.now()
+            session.add(bot)
+            await session.commit()
+            print(f"{message} @ {self.bot_data.name}")
 
     def debug(self, message: str, stop: bool = False) -> None:
         """Debug message"""
+
         from winsound import Beep
 
-        print('-----')
+        print("-----")
         print(f"{self.bot_data.name} >>>>>> {message}")
         print("\n" * 5)
         Beep(1000, 1000)

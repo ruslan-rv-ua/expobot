@@ -1,13 +1,8 @@
 """
 TODO:
-    - decouple exchange class into 2 classes:
-        - exchange class for real exchanges
-        - exchange class for virtual exchanges
-    - place_order_* in services/exchange.py
-    - cancel_order_* in services/exchange.py
-    - fetch orders in services/exchange.py
-    - bot's trading logic in services/bot.py
-    - tick() in services/bot.py
+    - level 0 price
+    - tiemstamp for last update
+    - backtesting
     - GUI for bot:
         - bots list view
             - remove 'description' column

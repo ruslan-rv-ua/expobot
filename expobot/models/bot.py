@@ -22,7 +22,6 @@ class BotData(SQLModel):
     created_at: datetime = Field(default=datetime.now())
 
     # parameters
-    name: str = Field(min_length=1, max_length=100)
     exchange_account: str = Field(min_length=1, max_length=255)
     symbol: str = Field(min_length=1, max_length=21)
     level_height: float
@@ -32,6 +31,7 @@ class BotData(SQLModel):
     buy_down_levels: int
 
     # calculated
+    name: str = Field(min_length=1, max_length=100)
     taker: float
     maker: float
     total_level_height: float
@@ -39,6 +39,7 @@ class BotData(SQLModel):
     # state
     status: BotStatus
     message: str | None = None
+    message_datetime: datetime | None = None
     last_price: float
     last_floor: int
 
@@ -70,10 +71,9 @@ class BotWithDetails(Bot):
 class BotCreate(SQLModel):
     """Schema for Bot creation"""
 
-    name: str = Field(min_length=1, max_length=100)
     exchange_account: str = Field(min_length=1, max_length=255)
     symbol: str = Field(min_length=1, max_length=21)
-    level_height: float = Field(default=settings.DEFAULT_LEVEL_HEIGHT)
+    level_height: float
     trade_amount: float = Field(default=settings.DEFAULT_TRADE_AMOUNT)
     level_0_price: float = Field(default=settings.DEFAULT_LEVEL_0_PRICE)  # TODO: remove
     buy_up_levels: int = Field(default=settings.DEFAULT_BUY_UP_LEVELS)

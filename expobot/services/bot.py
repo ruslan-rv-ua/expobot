@@ -27,9 +27,9 @@ class BotsManager:
 
     async def get_bot(self) -> Bot:
         """Get bot by id"""
-        bot_scalar = (await self.session.execute(
-            select(BotModel).where(BotModel.id == self.id)
-        )).scalar_one_or_none()
+        bot_scalar = (
+            await self.session.execute(select(BotModel).where(BotModel.id == self.id))
+        ).scalar_one_or_none()
         if bot_scalar is None:
             raise HTTPException(status_code=404, detail="Bot not found")
         return Bot.from_orm(bot_scalar)
@@ -37,32 +37,34 @@ class BotsManager:
     async def get_bot_with_details(self) -> BotWithDetails:
         """Get bot by id with orders and levels"""
         bot = await self.get_bot()
-        orders=await self.get_orders()
-        levels=await self.get_levels()
-        bot = BotWithDetails(
-            **bot.dict(), orders=orders, levels=levels
-        )
+        orders = await self.get_orders()
+        levels = await self.get_levels()
+        bot = BotWithDetails(**bot.dict(), orders=orders, levels=levels)
         return bot
-
 
     async def create_bot(self, bot_data: BotCreate) -> Bot:
         """Create bot"""
+        name = f"{bot_data.trade_amount}x " \
+            f"{bot_data.symbol} " \
+            f"~ {round(bot_data.level_height * 100, 2)}% " \
+            f"@ {bot_data.exchange_account}"
         if (
             await self.session.execute(
-                select(BotModel).where(BotModel.name == bot_data.name)
+                select(BotModel).where(BotModel.name == name)
             )
         ).one_or_none():
             raise HTTPException(
-                status_code=409, detail="Bot with the same name already exists"
+                status_code=409, detail="Bot with the same parameters already exists"
             )
-        exchange = exchanges_manager[bot_data.exchange_account]
+        exchange = exchanges_manager.get(bot_data.exchange_account)
         symbol_info = exchange.fetch_symbol_info(bot_data.symbol)
         taker = symbol_info["taker"]
         maker = symbol_info["maker"]
-        total_level_height = bot_data.level_height + taker + maker
+        total_level_height = 1 + bot_data.level_height + taker + maker
         bot = BotModel(
             **bot_data.dict(),
             status=BotStatus.STOPPED,
+            name=name,
             taker=taker,
             maker=maker,
             total_level_height=total_level_height,
@@ -83,7 +85,11 @@ class BotsManager:
         self, side: OrderSide | None = None, status: OrderStatus | None = None
     ) -> list[Order]:
         """Get all orders for bot"""
-        query = select(OrderModel).where(OrderModel.bot_id == self.id).order_by(OrderModel.timestamp)
+        query = (
+            select(OrderModel)
+            .where(OrderModel.bot_id == self.id)
+            .order_by(OrderModel.timestamp)
+        )
         if side is not None:
             query = query.where(Order.side == side)
         if status is not None:
@@ -94,7 +100,11 @@ class BotsManager:
 
     async def get_levels(self) -> list[Level]:
         """Get all levels"""
-        query = select(LevelModel).where(LevelModel.bot_id == self.id).order_by(LevelModel.floor)
+        query = (
+            select(LevelModel)
+            .where(LevelModel.bot_id == self.id)
+            .order_by(LevelModel.floor)
+        )
         levels_scalars = (await self.session.execute(query)).scalars()
         levels = [Level.from_orm(level) for level in levels_scalars]
         # delete empty levels at the top and bottom
@@ -103,4 +113,3 @@ class BotsManager:
         while levels and levels[-1].is_empty():
             levels.pop()
         return levels
-

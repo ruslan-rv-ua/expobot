@@ -19,6 +19,7 @@ def delete_all_bots():
         for bot in bots:
             session.delete(bot)
         session.commit()
+    print("All bots deleted")
 
 
 def delete_all_orders():
@@ -27,6 +28,7 @@ def delete_all_orders():
         for order in orders:
             session.delete(order)
         session.commit()
+    print("All orders deleted")
 
 
 def delete_all_levels():
@@ -35,32 +37,24 @@ def delete_all_levels():
         for level in levels:
             session.delete(level)
         session.commit()
+    print("All levels deleted")
 
 
-def create_bot():
+def create_bot(
+    *, exchange_account: str, symbol: str, level_height: float = 0.01
+):
     bot_data = BotCreate(
-        name="Bina DOT",
-        exchange_account="binance_main_account",
-        symbol="DOT/USDT",
-        level_height=1,
+        exchange_account=exchange_account,
+        symbol=symbol,
+        level_height=level_height,
     )
     response = requests.post("http://localhost:8000/api/bots", json=bot_data.dict())
-
-    bot_data = BotCreate(
-        name="Fake Kuna TRX/UAH",
-        exchange_account="fkuna",
-        symbol="TRX/UAH",
-        level_height=1,
-    )
-    response = requests.post("http://localhost:8000/api/bots", json=bot_data.dict())
-    
-    return response.json()
-
+    print(f"Bot created:", response)
 
 
 if __name__ == "__main__":
     delete_all_bots()
     delete_all_orders()
     delete_all_levels()
-    bot = create_bot()
-    print(bot)
+    create_bot(exchange_account="binance_main_account", symbol="DOT/USDT", level_height=0.01)
+    create_bot(exchange_account="fkuna", symbol="USDT/UAH")

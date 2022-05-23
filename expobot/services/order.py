@@ -23,6 +23,7 @@ class Orders:
 
     async def update_open_orders(self) -> None:
         """Update open orders"""
+        self.exchange.clear_caches()
         async with Session() as session:
             query = select(OrderModel.order_id).where(
                 OrderModel.bot_id == self.bot_data.id,

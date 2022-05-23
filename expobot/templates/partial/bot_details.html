@@ -3,8 +3,10 @@
      hx-trigger="every {{ RELOAD_EVERY_SECONDS }}s"
      hx-get="/partial/{{ bot.id }}"
      hx-swap="outerHTML">
-    <h1>{{ bot.name }}</h1>
-    <h2 role="alert" aria-live="assertive">last level = {{ bot.last_floor }}, last price = {{ bot.last_price }}</h2>
+    <h1>
+        {{ bot.last_price if bot.status == 'running' else '[STOPPED]' }}
+        &nbsp;{{ bot.symbol }} @ {{ bot.exchange_account }}
+    </h1>
     <hr>
     <h2>Levels</h2>
     <table class="table table-bordered table-sm table-dark">
@@ -16,7 +18,7 @@
         </thead>
         <tbody>
             {% for level in bot.levels[::-1] %}
-                <tr{{ ' class=table-primary' if level.floor == bot.last_floor }}>
+                <tr{{ ' class=table-secondary' if level.floor == bot.last_floor }}>
                     <th>{{ level.floor }}</th>
                     <td{{' class=table-success' if level.buy_amount }}>
                         <!-- {{ level.buy_amount if level.buy_amount }} -->
