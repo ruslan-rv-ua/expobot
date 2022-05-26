@@ -1,0 +1,11 @@
+{% extends "layouts/main.html" %}
+{% block main_content %}
+    <div class="container">
+        <div class="row">
+            <div id="bot-details"
+                 hx-trigger="load"
+                 hx-get="/bot/{{bot_id}}/details"
+                 hx-swap="outerHTML"></div>
+        </div>
+    </div>
+{% endblock %}
