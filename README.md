@@ -1,7 +1,9 @@
 # expobot
 
-Simple cryptocurrency trading bot.
+Very simple cryptocurrency trading bot.
 
-## In heavy development
+## Under heavy development
+
+This project is for my studying FastAPI.
 
 Please ignore this repo right now :)

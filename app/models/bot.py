@@ -3,7 +3,7 @@ from datetime import datetime
 
 from sqlmodel import Field, Relationship, SQLModel
 
-from .. import settings
+from .. import config
 from .level import Level
 from .order import Order, OrderModel
 
@@ -82,10 +82,10 @@ class BotCreate(SQLModel):
     exchange_account: str = Field(min_length=1, max_length=255)
     symbol: str = Field(min_length=1, max_length=21)
     level_height: float
-    trade_amount: float = Field(default=settings.DEFAULT_TRADE_AMOUNT)
-    level_0_price: float = Field(default=settings.DEFAULT_LEVEL_0_PRICE)  # TODO: remove
-    buy_up_levels: int = Field(default=settings.DEFAULT_BUY_UP_LEVELS)
-    buy_down_levels: int = Field(default=settings.DEFAULT_BUY_DOWN_LEVELS)
+    trade_amount: float = Field(default=config.DEFAULT_TRADE_AMOUNT)
+    level_0_price: float = Field(default=config.DEFAULT_LEVEL_0_PRICE)  # TODO: remove
+    buy_up_levels: int = Field(default=config.DEFAULT_BUY_UP_LEVELS)
+    buy_down_levels: int = Field(default=config.DEFAULT_BUY_DOWN_LEVELS)
 
     class Config:
         schema_extra = {
@@ -94,10 +94,10 @@ class BotCreate(SQLModel):
                 "description": "Bot 1 description",
                 "exchange_account": "binance_main_account",
                 "symbol": "BTC/USDT",
-                "level_height": settings.DEFAULT_LEVEL_HEIGHT,
-                "trade_amount": settings.DEFAULT_TRADE_AMOUNT,
-                "level_0_price": settings.DEFAULT_LEVEL_0_PRICE,
-                "buy_up_levels": settings.DEFAULT_BUY_UP_LEVELS,
-                "buy_down_levels": settings.DEFAULT_BUY_DOWN_LEVELS,
+                "level_height": config.DEFAULT_LEVEL_HEIGHT,
+                "trade_amount": config.DEFAULT_TRADE_AMOUNT,
+                "level_0_price": config.DEFAULT_LEVEL_0_PRICE,
+                "buy_up_levels": config.DEFAULT_BUY_UP_LEVELS,
+                "buy_down_levels": config.DEFAULT_BUY_DOWN_LEVELS,
             }
         }

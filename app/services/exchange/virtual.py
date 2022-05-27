@@ -10,9 +10,10 @@ from .base import ExchangeBase
 
 class VirtualExchange(ExchangeBase):
     is_virtual = True
+    is_backtest = False
 
-    def __init__(self, *, exchange: str, description: str | None = None, **kwargs):
-        super().__init__(exchange=exchange, description=description)
+    def __init__(self, *, exchange: str):
+        super().__init__(exchange=exchange)
         self.exchange_instance: ccxt.Exchange = self.exchange_class()
 
     async def fetch_orders(self, order_ids: list[str]) -> list[dict]:
@@ -27,7 +28,7 @@ class VirtualExchange(ExchangeBase):
             order_dict["id"] = order_dict["order_id"]
 
         """Mark orders as closed"""
-        orderbook = self.fetch_symbol_orderbook(orders_dicts[0]["symbol"])
+        orderbook = self.fetch_orderbook(orders_dicts[0]["symbol"])
         for order_dict in orders_dicts:
             if order_dict["status"] != "open":
                 continue

@@ -41,17 +41,6 @@ class LevelBase(SQLModel):
             self.buy_status == LevelStatus.NONE and self.sell_status == LevelStatus.NONE
         )
 
-
-
-class LevelModel(LevelBase, table=True):
-    """Database model for Level"""
-
-    __tablename__ = "levels"
-
-    id: int | None = Field(default=None, primary_key=True)
-
-    bot: "BotModel" = Relationship(back_populates="levels")
-
     def set_buy_order(self, order_id: str, amount: float):
         self.buy_order_id = order_id
         self.buy_amount = amount
@@ -71,6 +60,17 @@ class LevelModel(LevelBase, table=True):
         self.sell_order_id = None
         self.sell_amount = None
         self.sell_status = LevelStatus.NONE
+
+
+class LevelModel(LevelBase, table=True):
+    """Database model for Level"""
+
+    __tablename__ = "levels"
+
+    id: int | None = Field(default=None, primary_key=True)
+
+    bot: "BotModel" = Relationship(back_populates="levels")
+
 
 
 

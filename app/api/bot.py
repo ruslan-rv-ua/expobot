@@ -45,7 +45,7 @@ class BotsManager:
     async def create_bot(self, bot_data: BotCreate) -> Bot:
         """Create bot"""
         exchange = exchanges_manager.get(bot_data.exchange_account)
-        symbol_info = exchange.fetch_symbol_info(bot_data.symbol)
+        symbol_info = exchange.fetch_market(bot_data.symbol)
         taker = symbol_info["taker"]
         maker = symbol_info["maker"]
         total_level_height = 1 + bot_data.level_height + taker + maker

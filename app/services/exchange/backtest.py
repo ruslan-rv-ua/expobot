@@ -12,13 +12,16 @@ class BacktestExchange(ExchangeBase):
     is_virtual = True
     is_backtest = True
 
-    def __init__(self, *, exchange: str, description: str | None = None, **kwargs):
-        super().__init__(exchange=exchange, description=description)
+    def __init__(self, *, exchange: str, candles: list[dict]):
+        super().__init__(exchange=exchange)
         self.exchange_instance: ccxt.Exchange = self.exchange_class()
+        self.candles = candles
+        self.candle_index = 0
 
-    def set_last_price(self, last_price: float) -> None:
-        """Set last price"""
-        self.last_price = last_price
+    def _fetch_ticker(self, symbol: str) -> dict:
+        ticker = self.candles[self.candle_index]
+        self.candle_index += 1
+        return ticker
 
     async def fetch_orders(self, order_ids: list[str]) -> list[dict]:
         """Fetch orders"""
@@ -32,17 +35,19 @@ class BacktestExchange(ExchangeBase):
             order_dict["id"] = order_dict["order_id"]
 
         """Mark orders as closed"""
+        symbol = orders_dicts[0]["symbol"]
+        last_price = self.fetch_ticker(symbol)["last"]
         for order_dict in orders_dicts:
             if order_dict["status"] != "open":
                 continue
             if order_dict["side"] == "buy":
-                if order_dict["price"] >= self.last_price:
+                if order_dict["price"] >= last_price:
                     order_dict["status"] = "closed"
-                    order_dict["average"] = self.last_price
+                    order_dict["average"] = last_price
             else:
-                if order_dict["price"] <= self.last_price:
+                if order_dict["price"] <= last_price:
                     order_dict["status"] = "closed"
-                    order_dict["average"] = self.last_price
+                    order_dict["average"] = last_price
         return orders_dicts
 
     def place_order(

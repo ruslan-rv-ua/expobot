@@ -4,6 +4,7 @@ import ccxt
 
 class RealExchange(ExchangeBase):
     is_virtual = False
+    is_backtest = False
 
     def __init__(
         self,
@@ -11,9 +12,8 @@ class RealExchange(ExchangeBase):
         exchange: str,
         api_key: str,
         api_secret: str,
-        description: str | None = None
     ):
-        super().__init__(exchange=exchange, description=description)
+        super().__init__(exchange=exchange)
         self.exchange_instance: ccxt.Exchange = self.exchange_class(
             api_key=api_key, secret=api_secret
         )

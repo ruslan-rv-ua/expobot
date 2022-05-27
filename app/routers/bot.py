@@ -42,9 +42,21 @@ async def delete_bot(bots_manager: BotsManager = Depends()) -> Response:
 
 
 @router.get("/{bot_id}/tick", status_code=status.HTTP_200_OK)
-async def tick(
-    last_price: float | None = None, bot_runner: BotRunner = Depends(get_bot_runner)
-):
+async def tick(bot_runner: BotRunner = Depends(get_bot_runner)):
     """Tick"""
-    await bot_runner.tick(last_price)
+    await bot_runner.tick()
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get("/{bot_id}/run", status_code=status.HTTP_200_OK)
+async def run_bot(bot_runner: BotRunner = Depends(get_bot_runner)):
+    """Run bot"""
+    await bot_runner.run()
+    return Response(status_code=status.HTTP_200_OK)
+
+
+@router.get("/{bot_id}/stop", status_code=status.HTTP_200_OK)
+async def stop_bot(bot_runner: BotRunner = Depends(get_bot_runner)):
+    """Stop bot"""
+    await bot_runner.stop()
     return Response(status_code=status.HTTP_200_OK)

@@ -23,7 +23,6 @@ async def bots_list(request: Request):
 @router.get("/bots/bots_table_tbody", response_class=HTMLResponse)
 async def bots_table_tbody(request: Request, bots_manager: BotsManager = Depends()):
     bots = await bots_manager.get_bots()
-    print(bots)
 
     return templates.TemplateResponse(
         "bots/bots_table_tbody.html", {"request": request, "bots": bots}

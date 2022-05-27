@@ -32,7 +32,7 @@ class OrdersRunner:
 
     async def update_open_orders(self) -> None:
         """Update status of open orders"""
-        self.exchange.clear_caches()
+        self.exchange.tick()
         async with SessionLocal() as session:
             query = select(OrderModel.order_id).where(
                 OrderModel.bot_id == self.bot_id,

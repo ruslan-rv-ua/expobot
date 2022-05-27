@@ -16,28 +16,24 @@
                 <h6>
                     <a href="/bot/{{ bot.id }}">{{ bot }}</a>
                 </h6>
-                {%- if bot.description -%}
-                    <small>{{ bot.description }}</small>
-                {%- endif -%}
-                {%- if not bot.message -%}
-                    <br><blockquote>Message: {{ bot.message }}</blockquote>
-                {%- endif -%}
             </th>
-            <td>{{ bot.status | upper }}</td>
-            <td>{{ bot.exchange_account }} {{ bot.symbol }}</td>
-            <td>{{ bot.total_level_height * 100 }} %</td>
-            <td>{{ bot.description }}</td>
+            <td>
+                {%- if bot.message -%}
+                <blockquote>{{ bot.message }}</blockquote>{{bot.message_datetime.strftime("%H:%M:%S %Y-%m-%d")}}
+                {%- endif -%}
+            </td>
+            <td>{{ "%.2f"|format((bot.total_level_height-1)*100) }} %</td>
             <td>
                 {%- if bot.status == "running" %}
                     <button type="button"
                             class="btn btn-danger"
                             hx-trigger="click"
-                            hx-post="/bot/{{ bot.id }}/stop">Stop</button>
+                            hx-get="/api/bots/{{ bot.id }}/stop">Stop</button>
                 {%- elif bot.status == "stopped" %}
                     <button type="button"
                             class="btn btn-success"
                             hx-trigger="click"
-                            hx-post="/bot/{{ bot.id }}/start">Run</button>
+                            hx-get="/api/bots/{{ bot.id }}/run">Run</button>
                 {%- endif %}
             </td>
         </tr>

@@ -26,7 +26,7 @@ import logging
 from fastapi import FastAPI
 from fastapi_utils.tasks import repeat_every
 
-from . import routers, settings
+from . import config, routers
 from .services.db import init_db
 from .services.tick import tick
 
@@ -62,7 +62,7 @@ APP_ON = True
 
 
 @app.on_event("startup")
-@repeat_every(seconds=settings.TICK_PERIOD, raise_exceptions=True)
+@repeat_every(seconds=config.TICK_PERIOD, raise_exceptions=True)
 async def tick_periodic_task():
     global APP_ON
     if APP_ON:
