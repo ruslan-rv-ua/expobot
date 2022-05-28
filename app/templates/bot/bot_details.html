@@ -12,8 +12,8 @@
     <table class="table table-bordered table-sm table-dark">
         <thead>
             <th scope="col">Level</th>
-            <th scope="col">Buy order, amount</th>
-            <th scope="col">Sell order, amount</th>
+            <th scope="col">Buy</th>
+            <th scope="col">Sell</th>
             <th scope="col">Price</th>
         </thead>
         <tbody>
@@ -22,11 +22,11 @@
                     <th>{{ level.floor }}</th>
                     <td{{' class=table-success' if level.buy_amount }}>
                         <!-- {{ level.buy_amount if level.buy_amount }} -->
-                        {{ level.buy_status }}
+                        {{ level.buy_status.upper() }}
                     </td>
-                    <td{{' class=table-danger' if level.sell_amount }}>
-                        <!-- {{ level.sell_amount if level.sell_amount }} -->
-                        {{ level.sell_status }}
+                    <td{{' class=table-success' if level.buy_amount }}>
+                        <!-- {{ level.buy_amount if level.buy_amount }} -->
+                        {{ level.sell_status.upper() }}
                     </td>
                     <td align="center">{{ level.price }}</td>
                 </tr>

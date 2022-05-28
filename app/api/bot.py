@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlmodel import select
 
 from ..models.bot import Bot, BotCreate, BotModel, BotStatus, BotWithDetails
-from ..models.level import Level, LevelModel
+from ..models.level import Level, LevelModel, LevelStatus
 from ..models.order import Order, OrderModel, OrderSide, OrderStatus
 from ..services.db import get_session
 from ..services.exchange.manager import exchanges_manager
@@ -51,7 +51,7 @@ class BotsManager:
         total_level_height = 1 + bot_data.level_height + taker + maker
         bot = BotModel(
             **bot_data.dict(),
-            status=BotStatus.STOPPED,
+            status=BotStatus.RUNNING, # TODO: !!! must be STOPPED
             taker=taker,
             maker=maker,
             total_level_height=total_level_height,

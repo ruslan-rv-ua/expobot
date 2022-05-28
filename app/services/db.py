@@ -4,7 +4,13 @@ from sqlmodel import SQLModel
 
 from app import config
 
-engine = create_async_engine(config.DATABASE_URL, echo=False, future=True)
+engine = create_async_engine(
+    config.DATABASE_URL,
+    echo=False,
+    future=True,
+    connect_args={"check_same_thread": False},
+    isolation_level="READ UNCOMMITTED"
+)
 SessionLocal: AsyncSession = sessionmaker(
     bind=engine, class_=AsyncSession, expire_on_commit=True
 )

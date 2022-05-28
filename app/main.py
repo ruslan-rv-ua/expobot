@@ -1,9 +1,9 @@
 """
 TODO:
+    - move logger to class
     - backtesting
     - statistics
     - start/stop
-    - logging
     - change `Exception` to own exceptions
     - level 0 price
     - GUI for bot:
@@ -58,7 +58,7 @@ async def startup():
 
 # TODO: move to services/bot.py?
 APP_ON = True
-# APP_ON = False
+APP_ON = False
 
 
 @app.on_event("startup")

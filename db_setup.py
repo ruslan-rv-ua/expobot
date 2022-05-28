@@ -5,7 +5,7 @@ from app.models.bot import BotCreate, BotModel
 from app.models.level import LevelModel
 from app.models.order import OrderModel
 
-DATABASE_URL = f"sqlite:///./expobot/database_expobot.db"
+DATABASE_URL = f"sqlite:///./database_expobot.db"
 engine = create_engine(DATABASE_URL)
 
 # SQLModel.metadata.drop_all(engine)
@@ -51,11 +51,12 @@ def create_bot(
     print(f"Bot created:", response)
 
 
-if __name__ == "__main__":
-    # delete_all_bots()
-    # delete_all_orders()
-    # delete_all_levels()
+def setup_db_for_backtest():
+    delete_all_bots()
+    delete_all_orders()
+    delete_all_levels()
     create_bot(exchange_account="Backtest Binance", symbol="DOT/USDT", level_height=0.01)
-    
-    # create_bot(exchange_account="Virtal Binance", symbol="BTC/USDT", level_height=0.008)
-    # create_bot(exchange_account="Virtual Kuna", symbol="TRX/USDT", level_height=0.005)
+
+if __name__ == "__main__":
+    create_bot(exchange_account="Virtal Binance", symbol="BTC/USDT", level_height=0.008)
+    create_bot(exchange_account="Virtual Kuna", symbol="TRX/USDT", level_height=0.005)

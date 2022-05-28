@@ -32,6 +32,10 @@ async def get_bot_runner(bot_id: int) -> "BotRunner":
 
 
 class BotRunner:
+    logger: logging.Logger = logging.getLogger("bot_runner")
+    logger.addHandler(logging.StreamHandler())
+    logger.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
+
     def __init__(self, bot: Bot) -> None:
         self.bot = bot  # TODO: remove self._get_bot()
         self.exchange = exchanges_manager.get(
@@ -43,20 +47,12 @@ class BotRunner:
         self.levels = LevelsRunner(bot=self.bot, orders=orders)
 
         self.busy = False
-        self.logger = self._create_logger()
-        self.logger.debug(f"Runner created: {self}")
+        self.logger.debug(f"Runner created: {self!r}")
 
     def __repr__(self) -> str:
         return (
             f"BotRunner(#{self.bot.id} {self.bot.symbol} @ {self.bot.exchange_account})"
         )
-
-    def _create_logger(self) -> logging.Logger:
-        logger = logging.getLogger(__name__)
-        if not logger.handlers:
-            logger.addHandler(logging.StreamHandler())
-        logger.setLevel(logging.DEBUG if config.DEBUG else logging.INFO)
-        return logger
 
     async def refresh(self) -> None:
         """Refresh bot data"""
@@ -96,13 +92,9 @@ class BotRunner:
         self.busy = True
 
         await self.levels.update()
-        self.logger.debug(f"Levels updated: {self}")
 
-        # await self._process_closed_buy_levels()
-        # self.logger.debug(f"Closed buy levels processed: {self}")
-
-        await self._process_closed_sell_levels()
-        self.logger.debug(f"Closed sell levels processed: {self}")
+        await self._process_bought_levels()
+        await self._process_sold_levels()
 
         self.ticker = await self._fetch_ticker()
         await self._update_last_price_and_floor()
@@ -111,13 +103,14 @@ class BotRunner:
         )
 
         if self.bot.status == BotStatus.RUNNING:
-            # self.logger.debug(f"Using trading logic: {self}")
+            self.logger.debug(f"Using trading logic: {self}")
             # trade logic
-            pass
-            # await self._buy_current_floor_and_down()
-            # await self._buy_above_current_floor()
+            await self._buy_current_floor_and_down()
+            await self._buy_above_current_floor()
 
-        # await self._cancel_excess_buy_orders()
+            # await self._cancel_excess_buy_orders()
+
+            await self.levels.update()
 
         self.busy = False
 
@@ -125,61 +118,53 @@ class BotRunner:
     # trade logic
     ###########################################################################
 
-    async def _process_closed_buy_levels(self) -> None:
-        """Process closed buy levels"""
-        query = select(LevelModel).where(
-            LevelModel.bot_id == self.bot.id,
-            LevelModel.buy_status == LevelStatus.CLOSED,
-        )
-        async with SessionLocal() as session:
-            result = await session.execute(query)
-            levels = result.scalars()
-            for level in levels:
-                await self.levels.place_order(
-                    floor=level.floor + 1,
-                    side=OrderSide.SELL,
-                    amount=self.bot.trade_amount,
-                )
-                level.clear_buy_order()
-                session.add(level)
-            await session.commit()
+    async def _process_bought_levels(self) -> None:
+        """Process bought levels"""
+        bought_levels_list = await self.levels.get_list(buy_status=LevelStatus.CLOSED)
+        for bought_level in bought_levels_list:
+            await self.levels.sell_level(
+                bought_level.floor + 1, amount=bought_level.amount
+            )
+            await self.levels.clear_buy_level(bought_level.floor)
 
-    async def _process_closed_sell_levels(self) -> None:
-        """Process closed sell levels"""
-        query = select(LevelModel).where(
-            LevelModel.bot_id == self.bot.id,
-            LevelModel.sell_status == LevelStatus.CLOSED,
-        )
-        async with SessionLocal() as session:
-            levels = await session.execute(query)
-            for level in levels.scalars():
-                level.clear_sell_status()
-                session.add(level)
-            await session.commit()
+        self.logger.debug(f"Bought levels processed: {self!r}")
+
+    async def _process_sold_levels(self) -> None:
+        """Process sold levels"""
+        sold_levels_list = await self.levels.get_list(sell_status=LevelStatus.CLOSED)
+        for sold_level in sold_levels_list:
+            await self.levels.clear_sell_level(sold_level.floor)
+
+        self.logger.debug(f"Sold levels processed: {self!r}")
+        
 
     async def _buy_current_floor_and_down(self) -> None:
         """If current floor and under are not open buy,
         then we need to place buy orders"""
+        levels_mapping = await self.levels.get_mapping()
         for offsset in range(self.bot.buy_down_levels):
             target_floor = self.bot.last_floor - offsset
-            if await self.levels.can_place_buy_order(target_floor):
-                await self.levels.place_order(
-                    floor=target_floor,
-                    side=OrderSide.BUY,
-                    amount=self.bot.trade_amount,
-                )
+            target_level = levels_mapping.get(target_floor)
+            if target_level and target_level.buy_status != LevelStatus.NONE:
+                continue
+            level_up = levels_mapping.get(target_floor + 1)
+            if level_up and level_up.sell_status == LevelStatus.OPEN:
+                continue
+            await self.levels.buy_level(target_floor, amount=self.bot.trade_amount)
 
     async def _buy_above_current_floor(self) -> None:
         """If current floor+1 and above are not open buy,
         then we need to place buy orders"""
+        levels_mapping = await self.levels.get_mapping()
         for offsset in range(self.bot.buy_up_levels):
             target_floor = self.bot.last_floor + offsset + 1
-            if await self.levels.can_place_buy_order(target_floor):
-                await self.levels.place_order(
-                    floor=target_floor,
-                    side=OrderSide.BUY,
-                    amount=self.bot.trade_amount,
-                )
+            target_level = levels_mapping.get(target_floor)
+            if target_level and target_level.buy_status != LevelStatus.NONE:
+                continue
+            level_up = levels_mapping.get(target_floor + 1)
+            if level_up and level_up.sell_status == LevelStatus.OPEN:
+                continue
+            await self.levels.buy_level(target_floor, amount=self.bot.trade_amount)
 
     async def _cancel_excess_buy_orders(self) -> None:
         async with SessionLocal() as session:
