@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, Response, status
 
-from ..models.bot import Bot, BotCreate, BotStatus, BotWithDetails
 from ..api.bot import BotsManager
+from ..models.bot import Bot, BotCreate, BotStatus, BotWithDetails
 from ..services.bot import BotRunner, get_bot_runner
 
 router = APIRouter(

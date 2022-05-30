@@ -1,11 +1,9 @@
-import requests
-from db_setup import (
-    delete_all_bots,
-    delete_all_orders,
-    delete_all_levels,
-    create_bot,
-)
 from winsound import Beep
+
+import requests
+
+from db_setup import (create_bot, delete_all_bots, delete_all_levels,
+                      delete_all_orders)
 
 
 def pause(message: str = None):
@@ -36,12 +34,10 @@ setup_db_for_backtest()
 response = requests.get(host)
 print("first response:", response)
 
-print_every = 50
+print_every = 5000
 index = 0
 input("Press Enter to start...")
 while True:
-    if index == 49:
-        pause("index == 44")
     response = requests.get(host)
     if response.status_code != 200:
         print(index, response, "\a")

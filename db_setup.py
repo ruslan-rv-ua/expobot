@@ -1,13 +1,13 @@
 import requests
-from sqlmodel import Session, select
+from sqlmodel import Session, SQLModel, select
 
+from app.db import engine
 from app.models.bot import BotCreate, BotModel
 from app.models.level import LevelModel
 from app.models.order import OrderModel
-from app.services.db import engine
 
 # SQLModel.metadata.drop_all(engine)
-# SQLModel.metadata.create_all(engine)
+SQLModel.metadata.create_all(engine)
 
 
 def delete_all_bots():

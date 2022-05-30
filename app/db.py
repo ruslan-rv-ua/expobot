@@ -1,6 +1,10 @@
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 
-from app import config
+from . import config
+
+# from .models.bot import BotModel  # noqa
+# from .models.level import LevelModel  # noqa
+# from .models.order import OrderModel  # noqa
 
 connect_args = {"check_same_thread": False}
 engine = create_engine(
@@ -15,7 +19,7 @@ def get_session() -> Session:
         yield session
 
 
-def init_db():
+def create_db_and_tables():
     # uncomment next line to drop all tables
     # SQLModel.metadata.drop_all
-    SQLModel.metadata.create_all
+    SQLModel.metadata.create_all(engine)

@@ -1,5 +1,6 @@
-from .base import ExchangeBase
 import ccxt
+
+from .base import ExchangeBase
 
 
 class RealExchange(ExchangeBase):
@@ -29,7 +30,7 @@ class RealExchange(ExchangeBase):
 
     def place_order(
         self, symbol: str, type: str, side: str, amount: float, price: float
-    ) -> str:
+    ) -> dict:
         """Place order"""
         return self.exchange_instance.create_order(
             symbol=symbol, type=type, side=side, amount=amount, price=price

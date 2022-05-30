@@ -3,12 +3,12 @@
 
 
 import pytest
+from db import get_session
 from fastapi.testclient import TestClient
 from main import app
 from models.bot import BotModel
-from sqlmodel import SQLModel, Session, create_engine
+from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
-from db import get_session
 
 
 @pytest.fixture(name="session")

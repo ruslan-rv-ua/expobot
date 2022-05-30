@@ -12,7 +12,7 @@ class ExchangesManager:
         self.__exchanges_configs = exchanges_config
 
     @cache
-    def get(self, exchange_account) -> ExchangeBase:
+    def get(self, exchange_account: str) -> ExchangeBase:
         """Get an exchange instance by its account name"""
         if exchange_account not in self.__exchanges_configs:
             raise Exception(f"Exchange account `{exchange_account}` not found")
@@ -37,5 +37,6 @@ class ExchangesManager:
                 )
 
 
-# TODO: make this class a singleton and as dependency injection
-exchanges_manager: ExchangesManager = ExchangesManager(settings.EXCHANGE_ACCOUNTS)
+exchanges_manager: ExchangesManager = ExchangesManager(
+    settings.EXCHANGE_ACCOUNTS
+)

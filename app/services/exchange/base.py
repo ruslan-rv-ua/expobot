@@ -1,3 +1,4 @@
+from functools import cache
 import ccxt
 
 
@@ -9,34 +10,32 @@ class ExchangeBase:
     ):
         self.exchange = exchange
 
-        self.exchange_class = getattr(ccxt, self.exchange)
-        if self.exchange_class is None:
-            raise Exception(f"Exchange {self.exchange} not found")
-
-        self._last_ticker_cache = {}
+        self.exchange_class = getattr(ccxt, self.exchange, None)
+        assert (
+            self.exchange_class is not None
+        ), f"Exchange {self.exchange} not found"
 
     def __str__(self) -> str:
         return f'{"[VIRTUAL] " if self.is_virtual else ""}{self.exchange}'
-
-    def tick(self) -> None:
-        self._last_ticker_cache = {}
 
     def _fetch_ticker(self, symbol: str) -> dict:
         """Fetch ticker from the exchange"""
         ticker = self.exchange_instance.fetch_ticker(symbol)
         return ticker
 
+    def tick(self) -> None:
+        self.fetch_ticker.cache_clear()
+
+    @cache
     def fetch_ticker(self, symbol: str) -> dict:
-        if self._last_ticker_cache.get(symbol) is None:
-            ticker = self._fetch_ticker(symbol)
-            if ticker.get("last") is None:
-                ticker["last"] = (
-                    ticker.get("close")
-                    or ticker["info"].get("last")
-                    or ticker["info"].get("close")
-                )
-            self._last_ticker_cache[symbol] = ticker
-        return self._last_ticker_cache[symbol]
+        ticker = self._fetch_ticker(symbol)
+        if ticker.get("last") is None:
+            ticker["last"] = (
+                ticker.get("close")
+                or ticker["info"].get("last")
+                or ticker["info"].get("close")
+            )
+        return ticker
 
     def fetch_market(self, symbol: str) -> dict:
         self.exchange_instance.load_markets()

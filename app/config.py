@@ -1,7 +1,7 @@
 DEBUG = True
 
-# DATABASE_URL = "sqlite://:memory:"
-DATABASE_URL = f"sqlite:///database_expobot.db"
+# DATABASE_URL = "sqlite:///:memory:"
+DATABASE_URL = "sqlite:///database_expobot.db"
 
 # Bot config
 DEFAULT_LEVEL_HEIGHT = 0.03  # means 3%

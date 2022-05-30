@@ -1,23 +1,23 @@
 import datetime
-from functools import cache
 import logging
+from functools import cache
 
-from sqlmodel import select
-
-from .level import LevelsRunner
+from sqlmodel import Session, select
 
 from .. import config
+from ..db import engine
 from ..models.bot import Bot, BotModel, BotStatus
 from ..models.level import LevelStatus
-from .db import get_session
 from .exchange.manager import exchanges_manager
+from .level import LevelsRunner
 from .order import OrdersRunner
 
 
 @cache
 def get_bot_runner(bot_id: int) -> "BotRunner":
     """Get bot runner by bot id"""
-    with get_session() as session:
+    with Session(engine) as session:
+        bot = session.exec(select(BotModel).where(BotModel.id == bot_id)).one()
         bot = session.exec(select(BotModel).where(BotModel.id == bot_id)).one()
     return BotRunner(bot)
 
@@ -32,12 +32,9 @@ class BotRunner:
         self.exchange = exchanges_manager.get(
             exchange_account=self.bot.exchange_account
         )
-        orders = OrdersRunner(  # TODO: !!!
-            bot_id=self.bot.id, exchange=self.exchange, symbol=self.bot.symbol
-        )
+        orders = OrdersRunner(bot=self.bot, exchange=self.exchange)
         self.levels = LevelsRunner(bot=self.bot, orders=orders)
 
-        self.busy = False  # TODO: !!! remove
         self.logger.debug(f"Runner created: {self!r}")
 
     def __repr__(self) -> str:
@@ -53,27 +50,23 @@ class BotRunner:
     def _update_ticker(self) -> dict:
         """Update ticker"""
         self.exchange.tick()
-        self.ticker = self.exchange.fetch_ticker(
-            symbol=self.bot.symbol
-        )  # TODO: add error handling
-
+        self.ticker = self.exchange.fetch_ticker(symbol=self.bot.symbol)
         last_price = (
             self.ticker.get("last")
             or self.ticker.get("close")
             or self.ticker.get("price")
         )
         last_floor = self.levels.price_to_floor(last_price)
-        session = get_session()
-        self.bot.last_price = last_price
-        self.bot.last_floor = last_floor
-        session.add(self.bot)
-        session.commit()
-        session.refresh(self.bot)
+        with Session(engine) as session:
+            self.bot.last_price = last_price
+            self.bot.last_floor = last_floor
+            session.add(self.bot)
+            session.commit()
+            session.refresh(self.bot)
 
     def tick(self) -> None:
         """Handle tick"""
         self.logger.debug(f"\nTick: {self!r}")
-        self.busy = True
 
         self.levels.update()
 
@@ -86,15 +79,13 @@ class BotRunner:
         )
 
         if self.bot.status == BotStatus.RUNNING:
-            self.logger.debug(f"Using trading logic: {self}")
             # trade logic
+            self.logger.debug(f"Using trading logic: {self}")
             self._buy_current_floor_and_down()
             self._buy_above_current_floor()
 
-            self.levels.update()
+            #!!! self.levels.update()
             self._cancel_excess_buy_orders()
-
-        self.busy = False
 
     ###########################################################################
     # trade logic
@@ -102,7 +93,9 @@ class BotRunner:
 
     def _process_bought_levels(self) -> None:
         """Process bought levels"""
-        bought_levels_list = self.levels.get_list(buy_status=LevelStatus.CLOSED)
+        bought_levels_list = self.levels.get_list(
+            buy_status=LevelStatus.CLOSED
+        )
         for bought_level in bought_levels_list:
             self.levels.sell_level(
                 bought_level.floor + 1, amount=bought_level.buy_amount
@@ -149,7 +142,9 @@ class BotRunner:
         """Cancel excess buy orders"""
         levels_list = self.levels.get_list(buy_status=LevelStatus.OPEN)
         levels_list = [
-            level for level in levels_list if level.floor <= self.bot.last_floor
+            level
+            for level in levels_list
+            if level.floor <= self.bot.last_floor
         ]
         excess_levels = levels_list[: -self.bot.buy_down_levels]
         for level in excess_levels:
@@ -161,12 +156,12 @@ class BotRunner:
 
     def run(self) -> None:
         """Run bot"""
-        session = get_session()
         if self.bot.status == BotStatus.STOPPED:
-            self.bot.status = BotStatus.RUNNING
-            session.add(self.bot)
-            session.commit()
-            session.refresh(self.bot)
+            with Session(engine) as session:
+                self.bot.status = BotStatus.RUNNING
+                session.add(self.bot)
+                session.commit()
+                session.refresh(self.bot)
         else:
             raise Exception(f"Bot {self.bot} already running")
         self.message("Running")
@@ -177,12 +172,12 @@ class BotRunner:
         if message:
             self.debug(message)
         if self.bot.status == BotStatus.RUNNING:
-            session = get_session()
-            self.bot.status = BotStatus.STOPPED
-            self.bot.message = message
-            session.add(self.bot)
-            session.commit()
-            session.refresh(self.bot)
+            with Session(engine) as session:
+                self.bot.status = BotStatus.STOPPED
+                self.bot.message = message
+                session.add(self.bot)
+                session.commit()
+                session.refresh(self.bot)
         else:
             raise Exception(f"Bot {self.bot} already stopped")
         self.message("Stopped")
@@ -190,12 +185,12 @@ class BotRunner:
 
     def message(self, message: str) -> None:
         """Set message"""
-        session = get_session()
-        self.bot.message = message
-        self.bot.message_datetime = datetime.datetime.now()
-        session.add(self.bot)
-        session.commit()
-        self.logger.warning(f"\n\n{self.bot} : {message}")
+        with Session(engine) as session:
+            self.bot.message = message
+            self.bot.message_datetime = datetime.datetime.now()
+            session.add(self.bot)
+            session.commit()
+            self.logger.warning(f"\n\n{self.bot} : {message}")
 
     def debug(self, message: str, stop: bool = False) -> None:
         """Debug message"""

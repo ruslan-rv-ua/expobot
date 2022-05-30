@@ -2,8 +2,8 @@ from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
-from ..models.order import OrderSide, OrderStatus
 from ..api.bot import BotsManager
+from ..models.order import OrderSide, OrderStatus
 
 templates = Jinja2Templates(directory="app/templates")
 

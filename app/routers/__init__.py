@@ -1,1 +1,1 @@
-from . import gui, bot  # noqa: F401
+from . import bot, gui  # noqa: F401

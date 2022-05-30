@@ -1,7 +1,8 @@
 import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
-from sqlmodel import Relationship, SQLModel, Field
+
+from sqlmodel import Field, Relationship, SQLModel
 
 if TYPE_CHECKING:
     from models.bot import BotModel

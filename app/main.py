@@ -1,13 +1,11 @@
 """
 TODO:
-    - move logger to class
     - backtesting
     - statistics
     - start/stop
     - change `Exception` to own exceptions
     - level 0 price
     - GUI for bot:
-        - refactor files structure
         - bots list view
             - remove 'description' column
             - add 'message' column
@@ -26,7 +24,7 @@ from fastapi import FastAPI
 from fastapi_utils.tasks import repeat_every
 
 from . import config, routers
-from .services.db import init_db
+from .db import create_db_and_tables
 from .services.tick import tick
 
 __VERSION__ = "0.0.1"
@@ -52,7 +50,7 @@ app.include_router(routers.gui.router)
 
 @app.on_event("startup")
 def startup():
-    init_db()
+    create_db_and_tables()
 
 
 # TODO: move to services/bot.py?

@@ -1,10 +1,10 @@
 import uuid
 
 import ccxt
-from sqlmodel import select
+from sqlmodel import select, Session
 
+from ...db import engine
 from ...models.order import OrderModel
-from ...services.db import get_session
 from .base import ExchangeBase
 
 
@@ -25,11 +25,11 @@ class BacktestExchange(ExchangeBase):
 
     def fetch_orders(self, order_ids: list[str]) -> list[dict]:
         """Fetch orders"""
-        session = get_session()
-        orders = session.exec(
-            select(OrderModel).where(OrderModel.order_id.in_(order_ids))
-        ).all()
-        orders_dicts = [OrderModel.from_orm(order).dict() for order in orders]
+        with Session(engine) as session:
+            orders = session.exec(
+                select(OrderModel).where(OrderModel.order_id.in_(order_ids))
+            ).all()
+            orders_dicts = [OrderModel.from_orm(order).dict() for order in orders]
         if not orders_dicts:
             return []
         for order_dict in orders_dicts:
@@ -53,7 +53,7 @@ class BacktestExchange(ExchangeBase):
 
     def place_order(
         self, symbol: str, type: str, side: str, amount: float, price: float
-    ) -> str:
+    ) -> dict:
         """Place order"""
         order = dict(
             id=str(uuid.uuid4()),
@@ -68,7 +68,12 @@ class BacktestExchange(ExchangeBase):
         )
         return order
 
-    def cancel_order(self, order_id: str, symbol: str | None = None) -> dict:
+    def cancel_order(self, order_id: str) -> dict:
         """Cancel order"""
-        # TODO: !!! implement
-        return dict(id=order_id, status="canceled")
+        with Session(engine) as session:
+            order = session.exec(
+                select(OrderModel).where(OrderModel.order_id == order_id)
+            ).one()
+            order = OrderModel.from_orm(order).dict()
+            order["status"] = "canceled"
+        return order

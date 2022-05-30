@@ -1,10 +1,10 @@
 from fastapi import Depends, HTTPException
-from sqlmodel import select, Session
+from sqlmodel import Session, select
 
+from ..db import get_session
 from ..models.bot import Bot, BotCreate, BotModel, BotStatus, BotWithDetails
 from ..models.level import Level, LevelModel
 from ..models.order import Order, OrderModel, OrderSide, OrderStatus
-from ..services.db import get_session
 from ..services.exchange.manager import exchanges_manager
 
 
@@ -24,7 +24,7 @@ class BotsManager:
         if status is not None:
             query = query.where(BotModel.status == status)
         bots = self.session.exec(query).all()
-        return [Bot.from_orm(b) for b in bots]
+        return [Bot.from_orm(bot) for bot in bots]
 
     def get_bot(self) -> Bot:
         """Get bot by id"""
@@ -82,7 +82,7 @@ class BotsManager:
             query = query.where(Order.side == side)
         if status is not None:
             query = query.where(Order.status == status)
-        orders = self.session.execute(query).all()
+        orders = self.session.exec(query).all()
         result = [Order.from_orm(order) for order in orders]
         return result
 
@@ -93,7 +93,7 @@ class BotsManager:
             .where(LevelModel.bot_id == self.id)
             .order_by(LevelModel.floor)
         )
-        levels = self.session.execute(query).all()
+        levels = self.session.exec(query).all()
         levels = [Level.from_orm(level) for level in levels]
         # delete empty levels at the top and bottom
         while levels and levels[0].is_empty():

@@ -1,6 +1,7 @@
 import enum
-from sqlmodel import Field, Relationship, select, SQLModel
 from typing import TYPE_CHECKING
+
+from sqlmodel import Field, Relationship, SQLModel, select
 
 if TYPE_CHECKING:
     from models.bot import BotModel
