@@ -22,10 +22,11 @@ class LevelBase(SQLModel):
 
     floor: int = Field(index=True)
     price: float
-    amount: float | None = None
     buy_status: LevelStatus = Field(default=LevelStatus.NONE)
+    buy_amount: float | None = None
     buy_order_id: str | None = Field(default=None, index=True)
     sell_status: LevelStatus = Field(default=LevelStatus.NONE)
+    sell_amount: float | None = None
     sell_order_id: str | None = Field(default=None, index=True)
 
     bot_id: int = Field(foreign_key="bots.id")
@@ -36,21 +37,8 @@ class LevelBase(SQLModel):
             self.buy_status == LevelStatus.NONE and self.sell_status == LevelStatus.NONE
         )
 
-    def side(self) -> str:
-        match self.buy_status, self.sell_status:
-            case (LevelStatus.NONE, LevelStatus.NONE):
-                return None
-            case (LevelStatus.OPEN, LevelStatus.NONE):
-                return 'buy'
-            case (LevelStatus.NONE, LevelStatus.OPEN):
-                return 'sell'
-        return ''
-            
-
     def __repr__(self) -> str:
-        return f"[{self.floor} {self.buy_status}-{self.sell_status} {self.amount}x {self.price}]"
-
-    
+        return f"[{self.floor} {self.buy_status} {self.sell_status}]"
 
 
 class LevelModel(LevelBase, table=True):

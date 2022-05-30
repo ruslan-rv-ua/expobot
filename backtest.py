@@ -1,5 +1,31 @@
 import requests
-from db_setup import setup_db_for_backtest
+from db_setup import (
+    delete_all_bots,
+    delete_all_orders,
+    delete_all_levels,
+    create_bot,
+)
+from winsound import Beep
+
+
+def pause(message: str = None):
+    Beep(1000, 300)
+    if message:
+        print(message)
+    response = input("Press Enter to continue or something to exit...")
+    return response
+
+
+def setup_db_for_backtest():
+    delete_all_bots()
+    delete_all_orders()
+    delete_all_levels()
+    create_bot(
+        exchange_account="Backtest Binance",
+        symbol="DOT/USDT",
+        level_height=0.1,
+    )
+
 
 # host = "http://192.168.1.10:8000/api/bots/1/tick"
 host = "http://127.0.0.1:8000/api/bots/1/tick"
@@ -8,16 +34,21 @@ host = "http://127.0.0.1:8000/api/bots/1/tick"
 setup_db_for_backtest()
 
 response = requests.get(host)
-print('first response:', response)
+print("first response:", response)
 
-print_every = 1
+print_every = 50
 index = 0
-input('Press Enter to start...')
+input("Press Enter to start...")
 while True:
+    if index == 49:
+        pause("index == 44")
     response = requests.get(host)
+    if response.status_code != 200:
+        print(index, response, "\a")
+        break
     if index % print_every == 0:
-        print(index, response.status_code)
-        resp = input('Press Enter to continue or enter something to stop...')
+        print(index, response)
+        resp = pause()
         if resp:
             break
     index += 1

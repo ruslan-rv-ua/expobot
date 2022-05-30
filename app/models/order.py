@@ -34,13 +34,13 @@ class OrderBase(SQLModel):
     average: float | None = Field(description="float average filling price")
     amount: float = Field(description="ordered amount of base currency")
     cost: float = Field(description="total cost of order in quote currency")
-    '''
+    """
     fee_currency: str = Field(max_length=10, description="fee currency")
     fee_cost: float = Field(description="the fee amount in fee currency")
     fee_rate: float | None = Field(
         default=None, description="the fee rate (if available)"
     )
-    '''
+    """
 
     bot_id: int = Field(foreign_key="bots.id")
 

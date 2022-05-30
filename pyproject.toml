@@ -10,13 +10,13 @@ fastapi = "^0.76.0"
 ccxt = "^1.81.95"
 Jinja2 = "^3.1.2"
 sqlmodel = "^0.0.6"
-aiosqlite = "^0.17.0"
 fastapi-utils = "^0.2.1"
 
 [tool.poetry.dev-dependencies]
 uvicorn = "^0.17.6"
 black = "^22.3.0"
 pytest = "^7.1.2"
+flake8 = "^4.0.1"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

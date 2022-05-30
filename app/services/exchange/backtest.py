@@ -4,7 +4,7 @@ import ccxt
 from sqlmodel import select
 
 from ...models.order import OrderModel
-from ...services.db import SessionLocal
+from ...services.db import get_session
 from .base import ExchangeBase
 
 
@@ -23,12 +23,13 @@ class BacktestExchange(ExchangeBase):
         self.candle_index += 1
         return ticker
 
-    async def fetch_orders(self, order_ids: list[str]) -> list[dict]:
+    def fetch_orders(self, order_ids: list[str]) -> list[dict]:
         """Fetch orders"""
-        async with SessionLocal() as session:
-            query = select(OrderModel).where(OrderModel.order_id.in_(order_ids))
-            result = await session.execute(query)
-        orders_dicts = [OrderModel.from_orm(order).dict() for order in result.scalars()]
+        session = get_session()
+        orders = session.exec(
+            select(OrderModel).where(OrderModel.order_id.in_(order_ids))
+        ).all()
+        orders_dicts = [OrderModel.from_orm(order).dict() for order in orders]
         if not orders_dicts:
             return []
         for order_dict in orders_dicts:

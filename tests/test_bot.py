@@ -10,6 +10,7 @@ from sqlmodel import SQLModel, Session, create_engine
 from sqlmodel.pool import StaticPool
 from db import get_session
 
+
 @pytest.fixture(name="session")
 def session_fixture():
     engine = create_engine(
@@ -19,19 +20,23 @@ def session_fixture():
     with Session(engine) as session:
         yield session
 
-@pytest.fixture(name="client")  # 
-def client_fixture(session: Session):  # 
-    def get_session_override():  # 
+
+@pytest.fixture(name="client")  #
+def client_fixture(session: Session):  #
+    def get_session_override():  #
         return session
-    app.dependency_overrides[get_session] = get_session_override  # 
-    client = TestClient(app)  # 
-    yield client  # 
-    app.dependency_overrides.clear()  
+
+    app.dependency_overrides[get_session] = get_session_override  #
+    client = TestClient(app)  #
+    yield client  #
+    app.dependency_overrides.clear()
+
 
 def test_database_is_empty(client: TestClient):  # nosec
     response = client.get("/api/bots/")
     assert response.status_code == 200, response.text
     data = response.json([])
+
 
 def test_create_dummy_bot_1(client: TestClient):  # nosec
     response = client.post(

@@ -18,7 +18,7 @@ class RealExchange(ExchangeBase):
             api_key=api_key, secret=api_secret
         )
 
-    async def fetch_orders(self, order_ids: list[str]) -> list[dict]:
+    def fetch_orders(self, order_ids: list[str]) -> list[dict]:
         """Get list of orders from the list of orders ids"""
         if self.exchange_instance.has["fetchOrders"]:
             return self.exchange_instance.fetch_orders(order_ids)

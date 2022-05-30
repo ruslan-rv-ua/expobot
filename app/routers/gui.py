@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, Path, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 
@@ -11,7 +11,7 @@ router = APIRouter(prefix="")
 
 
 @router.get("/", response_class=HTMLResponse)
-async def bots_list(request: Request):
+def bots_list(request: Request):
     return templates.TemplateResponse(
         "bots/bots_list.html",
         {
@@ -21,24 +21,23 @@ async def bots_list(request: Request):
 
 
 @router.get("/bots/bots_table_tbody", response_class=HTMLResponse)
-async def bots_table_tbody(request: Request, bots_manager: BotsManager = Depends()):
-    bots = await bots_manager.get_bots()
-
+def bots_table_tbody(request: Request, bots_manager: BotsManager = Depends()):
+    bots = bots_manager.get_bots()
     return templates.TemplateResponse(
         "bots/bots_table_tbody.html", {"request": request, "bots": bots}
     )
 
 
 @router.get("/bot/{bot_id}", response_class=HTMLResponse)
-async def bot_page(request: Request, bot_id: str):
+def bot_page(request: Request, bot_id: str):
     return templates.TemplateResponse(
         "bot/bot.html", {"request": request, "bot_id": bot_id}
     )
 
 
 @router.get("/bot/{bot_id}/details", response_class=HTMLResponse)
-async def bot_details(request: Request, bots_manager: BotsManager = Depends()):
-    bot = await bots_manager.get_bot_with_details()
+def bot_details(request: Request, bots_manager: BotsManager = Depends()):
+    bot = bots_manager.get_bot_with_details()
     base, quote = bot.symbol.split("/")
     closed_orders = [
         order for order in bot.orders if order.status == OrderStatus.CLOSED
@@ -62,7 +61,6 @@ async def bot_details(request: Request, bots_manager: BotsManager = Depends()):
         profit=profit,
         # profit_percent=profit_percent,
     )
-
     return templates.TemplateResponse(
         "bot/bot_details.html",
         {"request": request, "bot": bot, "stats": stats},

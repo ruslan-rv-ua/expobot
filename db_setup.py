@@ -1,12 +1,10 @@
 import requests
-from sqlmodel import Session, create_engine, select
+from sqlmodel import Session, select
 
 from app.models.bot import BotCreate, BotModel
 from app.models.level import LevelModel
 from app.models.order import OrderModel
-
-DATABASE_URL = f"sqlite:///./database_expobot.db"
-engine = create_engine(DATABASE_URL)
+from app.services.db import engine
 
 # SQLModel.metadata.drop_all(engine)
 # SQLModel.metadata.create_all(engine)
@@ -47,16 +45,18 @@ def create_bot(
         symbol=symbol,
         level_height=level_height,
     )
-    response = requests.post("http://localhost:8000/api/bots", json=bot_data.dict())
-    print(f"Bot created:", response)
+    response = requests.post(
+        "http://localhost:8000/api/bots", json=bot_data.dict()
+    )
+    print("Bot created:", response)
 
-
-def setup_db_for_backtest():
-    delete_all_bots()
-    delete_all_orders()
-    delete_all_levels()
-    create_bot(exchange_account="Backtest Binance", symbol="DOT/USDT", level_height=0.01)
 
 if __name__ == "__main__":
-    create_bot(exchange_account="Virtal Binance", symbol="BTC/USDT", level_height=0.008)
-    create_bot(exchange_account="Virtual Kuna", symbol="TRX/USDT", level_height=0.005)
+    create_bot(
+        exchange_account="Virtal Binance",
+        symbol="BTC/USDT",
+        level_height=0.008,
+    )
+    create_bot(
+        exchange_account="Virtual Kuna", symbol="TRX/USDT", level_height=0.005
+    )

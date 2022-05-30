@@ -1,5 +1,5 @@
-import asyncio
 import datetime
+from functools import cache
 import logging
 
 from sqlmodel import select
@@ -8,27 +8,18 @@ from .level import LevelsRunner
 
 from .. import config
 from ..models.bot import Bot, BotModel, BotStatus
-from ..models.level import LevelModel, LevelStatus
-from ..models.order import Order, OrderSide, OrderStatus
-from .db import SessionLocal
+from ..models.level import LevelStatus
+from .db import get_session
 from .exchange.manager import exchanges_manager
 from .order import OrdersRunner
 
-__bot_runners_cache = {}
 
-
-async def get_bot_runner(bot_id: int) -> "BotRunner":
+@cache
+def get_bot_runner(bot_id: int) -> "BotRunner":
     """Get bot runner by bot id"""
-    global __bot_runners_cache
-    async with SessionLocal() as session:
-        if bot_id not in __bot_runners_cache:
-            bot = (
-                await session.execute(select(BotModel).where(BotModel.id == bot_id))
-            ).scalar_one_or_none()
-            if bot is None:
-                raise ValueError(f"Bot with id {bot_id} not found")
-            __bot_runners_cache[bot_id] = BotRunner(bot=bot)
-        return __bot_runners_cache[bot_id]
+    with get_session() as session:
+        bot = session.exec(select(BotModel).where(BotModel.id == bot_id)).one()
+    return BotRunner(bot)
 
 
 class BotRunner:
@@ -46,58 +37,50 @@ class BotRunner:
         )
         self.levels = LevelsRunner(bot=self.bot, orders=orders)
 
-        self.busy = False
+        self.busy = False  # TODO: !!! remove
         self.logger.debug(f"Runner created: {self!r}")
 
     def __repr__(self) -> str:
         return (
-            f"BotRunner(#{self.bot.id} {self.bot.symbol} @ {self.bot.exchange_account})"
+            f"BotRunner(#{self.bot.id} {self.bot.symbol} "
+            f"@ {self.bot.exchange_account})"
         )
 
-    async def refresh(self) -> None:
-        """Refresh bot data"""
-        async with SessionLocal() as session:
-            await session.refresh(self.bot)
-
     ###########################################################################
-    # tick management
+    # tick
     ###########################################################################
 
-    async def _fetch_ticker(self) -> dict:
-        """Fetch ticker"""
+    def _update_ticker(self) -> dict:
+        """Update ticker"""
         self.exchange.tick()
-        ticker = self.exchange.fetch_ticker(
+        self.ticker = self.exchange.fetch_ticker(
             symbol=self.bot.symbol
         )  # TODO: add error handling
-        return ticker
 
-    async def _update_last_price_and_floor(self) -> dict:
-        """Update ticker"""
         last_price = (
             self.ticker.get("last")
             or self.ticker.get("close")
             or self.ticker.get("price")
         )
         last_floor = self.levels.price_to_floor(last_price)
-        async with SessionLocal() as session:
-            self.bot.last_price = last_price
-            self.bot.last_floor = last_floor
-            session.add(self.bot)
-            await session.commit()
-            await session.refresh(self.bot)
+        session = get_session()
+        self.bot.last_price = last_price
+        self.bot.last_floor = last_floor
+        session.add(self.bot)
+        session.commit()
+        session.refresh(self.bot)
 
-    async def tick(self) -> None:
+    def tick(self) -> None:
         """Handle tick"""
         self.logger.debug(f"\nTick: {self!r}")
         self.busy = True
 
-        await self.levels.update()
+        self.levels.update()
 
-        await self._process_bought_levels()
-        await self._process_sold_levels()
+        self._process_bought_levels()
+        self._process_sold_levels()
 
-        self.ticker = await self._fetch_ticker()
-        await self._update_last_price_and_floor()
+        self._update_ticker()
         self.logger.debug(
             f"Ticker: [{self.bot.last_floor} {self.bot.last_price}] {self}"
         )
@@ -105,12 +88,11 @@ class BotRunner:
         if self.bot.status == BotStatus.RUNNING:
             self.logger.debug(f"Using trading logic: {self}")
             # trade logic
-            await self._buy_current_floor_and_down()
-            await self._buy_above_current_floor()
+            self._buy_current_floor_and_down()
+            self._buy_above_current_floor()
 
-            # await self._cancel_excess_buy_orders()
-
-            await self.levels.update()
+            self.levels.update()
+            self._cancel_excess_buy_orders()
 
         self.busy = False
 
@@ -118,30 +100,27 @@ class BotRunner:
     # trade logic
     ###########################################################################
 
-    async def _process_bought_levels(self) -> None:
+    def _process_bought_levels(self) -> None:
         """Process bought levels"""
-        bought_levels_list = await self.levels.get_list(buy_status=LevelStatus.CLOSED)
+        bought_levels_list = self.levels.get_list(buy_status=LevelStatus.CLOSED)
         for bought_level in bought_levels_list:
-            await self.levels.sell_level(
-                bought_level.floor + 1, amount=bought_level.amount
+            self.levels.sell_level(
+                bought_level.floor + 1, amount=bought_level.buy_amount
             )
-            await self.levels.clear_buy_level(bought_level.floor)
-
+            self.levels.clear_buy_level(bought_level.floor)
         self.logger.debug(f"Bought levels processed: {self!r}")
 
-    async def _process_sold_levels(self) -> None:
+    def _process_sold_levels(self) -> None:
         """Process sold levels"""
-        sold_levels_list = await self.levels.get_list(sell_status=LevelStatus.CLOSED)
+        sold_levels_list = self.levels.get_list(sell_status=LevelStatus.CLOSED)
         for sold_level in sold_levels_list:
-            await self.levels.clear_sell_level(sold_level.floor)
-
+            self.levels.clear_sell_level(sold_level.floor)
         self.logger.debug(f"Sold levels processed: {self!r}")
-        
 
-    async def _buy_current_floor_and_down(self) -> None:
+    def _buy_current_floor_and_down(self) -> None:
         """If current floor and under are not open buy,
         then we need to place buy orders"""
-        levels_mapping = await self.levels.get_mapping()
+        levels_mapping = self.levels.get_mapping()
         for offsset in range(self.bot.buy_down_levels):
             target_floor = self.bot.last_floor - offsset
             target_level = levels_mapping.get(target_floor)
@@ -150,12 +129,12 @@ class BotRunner:
             level_up = levels_mapping.get(target_floor + 1)
             if level_up and level_up.sell_status == LevelStatus.OPEN:
                 continue
-            await self.levels.buy_level(target_floor, amount=self.bot.trade_amount)
+            self.levels.buy_level(target_floor, amount=self.bot.trade_amount)
 
-    async def _buy_above_current_floor(self) -> None:
+    def _buy_above_current_floor(self) -> None:
         """If current floor+1 and above are not open buy,
         then we need to place buy orders"""
-        levels_mapping = await self.levels.get_mapping()
+        levels_mapping = self.levels.get_mapping()
         for offsset in range(self.bot.buy_up_levels):
             target_floor = self.bot.last_floor + offsset + 1
             target_level = levels_mapping.get(target_floor)
@@ -164,68 +143,59 @@ class BotRunner:
             level_up = levels_mapping.get(target_floor + 1)
             if level_up and level_up.sell_status == LevelStatus.OPEN:
                 continue
-            await self.levels.buy_level(target_floor, amount=self.bot.trade_amount)
+            self.levels.buy_level(target_floor, amount=self.bot.trade_amount)
 
-    async def _cancel_excess_buy_orders(self) -> None:
-        async with SessionLocal() as session:
-            query = (
-                select(LevelModel.floor)
-                .where(
-                    LevelModel.bot_id == self.bot.id,
-                    LevelModel.buy_status == LevelStatus.OPEN,
-                    LevelModel.floor < self.last_floor - self.bot.buy_down_levels,
-                )
-                .order_by(LevelModel.floor)
-            )
-            excess_buy_floors = list((await session.execute(query)).scalars())
-        for floor in excess_buy_floors:
-            await self._cancel_opened_buy_order_at_level(floor)
+    def _cancel_excess_buy_orders(self) -> None:
+        """Cancel excess buy orders"""
+        levels_list = self.levels.get_list(buy_status=LevelStatus.OPEN)
+        levels_list = [
+            level for level in levels_list if level.floor <= self.bot.last_floor
+        ]
+        excess_levels = levels_list[: -self.bot.buy_down_levels]
+        for level in excess_levels:
+            self.levels.cancel_buy_level(level.floor)
 
     ###########################################################################
     # bot control
     ###########################################################################
 
-    async def run(self) -> None:
+    def run(self) -> None:
         """Run bot"""
-        while self.busy:
-            await asyncio.sleep(1)
-        async with SessionLocal() as session:
-            if self.bot.status == BotStatus.STOPPED:
-                self.bot.status = BotStatus.RUNNING
-                session.add(self.bot)
-                await session.commit()
-                await session.refresh(self.bot)
-            else:
-                raise Exception(f"Bot {self.bot} already running")
-            await self.message("Running")
-            self.logger.info(f"Bot {self.bot} running")
+        session = get_session()
+        if self.bot.status == BotStatus.STOPPED:
+            self.bot.status = BotStatus.RUNNING
+            session.add(self.bot)
+            session.commit()
+            session.refresh(self.bot)
+        else:
+            raise Exception(f"Bot {self.bot} already running")
+        self.message("Running")
+        self.logger.info(f"Bot {self.bot} running")
 
-    async def stop(self, message: str = None) -> None:
+    def stop(self, message: str | None = None) -> None:
         """Stop bot"""
-        while self.busy:
-            await asyncio.sleep(1)
         if message:
             self.debug(message)
-        async with SessionLocal() as session:
-            if self.bot.status == BotStatus.RUNNING:
-                self.bot.status = BotStatus.STOPPED
-                self.bot.message = message
-                session.add(self.bot)
-                await session.commit()
-                await session.refresh(self.bot)
-            else:
-                raise Exception(f"Bot {self.bot} already stopped")
-            await self.message("Stopped")
-            self.logger.info(f"Bot {self.bot} stopped")
-
-    async def message(self, message: str) -> None:
-        """Set message"""
-        async with SessionLocal() as session:
+        if self.bot.status == BotStatus.RUNNING:
+            session = get_session()
+            self.bot.status = BotStatus.STOPPED
             self.bot.message = message
-            self.bot.message_datetime = datetime.datetime.now()
             session.add(self.bot)
-            await session.commit()
-            self.logger.warning(f"\n\n{self.bot} : {message}")
+            session.commit()
+            session.refresh(self.bot)
+        else:
+            raise Exception(f"Bot {self.bot} already stopped")
+        self.message("Stopped")
+        self.logger.info(f"Bot {self.bot} stopped")
+
+    def message(self, message: str) -> None:
+        """Set message"""
+        session = get_session()
+        self.bot.message = message
+        self.bot.message_datetime = datetime.datetime.now()
+        session.add(self.bot)
+        session.commit()
+        self.logger.warning(f"\n\n{self.bot} : {message}")
 
     def debug(self, message: str, stop: bool = False) -> None:
         """Debug message"""

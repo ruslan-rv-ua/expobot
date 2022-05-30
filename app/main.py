@@ -17,7 +17,6 @@ TODO:
         - bot view
         - add bot
         - delete bot
-    - go exchange async
     - make descriptions, examples, status codes more clear
 """
 
@@ -52,8 +51,8 @@ app.include_router(routers.gui.router)
 
 
 @app.on_event("startup")
-async def startup():
-    await init_db()
+def startup():
+    init_db()
 
 
 # TODO: move to services/bot.py?
@@ -63,10 +62,10 @@ APP_ON = False
 
 @app.on_event("startup")
 @repeat_every(seconds=config.TICK_PERIOD, raise_exceptions=True)
-async def tick_periodic_task():
+def tick_periodic_task():
     global APP_ON
     if APP_ON:
-        await tick()
+        tick()
 
 
 if __name__ == "__main__":

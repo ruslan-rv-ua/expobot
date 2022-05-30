@@ -43,9 +43,7 @@ class BotData(SQLModel):
     last_floor: int
 
     def __str__(self) -> str:
-        return (
-            f"#{self.id} {self.symbol} @ {self.exchange_account}"
-        )
+        return f"#{self.id} {self.symbol} @ {self.exchange_account}"
 
     def __repr__(self) -> str:
         return f"<BotModel {self.id} {self.symbol} {self.status} @ {self.exchange_account}>"
@@ -59,7 +57,6 @@ class BotModel(BotData, table=True):
     id: int | None = Field(default=None, primary_key=True)
 
     orders: list[OrderModel] = Relationship(back_populates="bot")
-
 
 
 class Bot(BotData):

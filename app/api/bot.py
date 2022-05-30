@@ -1,9 +1,8 @@
 from fastapi import Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from sqlmodel import select
+from sqlmodel import select, Session
 
 from ..models.bot import Bot, BotCreate, BotModel, BotStatus, BotWithDetails
-from ..models.level import Level, LevelModel, LevelStatus
+from ..models.level import Level, LevelModel
 from ..models.order import Order, OrderModel, OrderSide, OrderStatus
 from ..services.db import get_session
 from ..services.exchange.manager import exchanges_manager
@@ -11,38 +10,40 @@ from ..services.exchange.manager import exchanges_manager
 
 class BotsManager:
     def __init__(
-        self, bot_id: int | None = None, session: AsyncSession = Depends(get_session)
+        self,
+        bot_id: int | None = None,
+        session: Session = Depends(get_session),
     ):
         self.id = bot_id
         self.session = session
 
-    async def get_bots(self, status: BotStatus | None = None) -> list[Bot]:
+    def get_bots(self, status: BotStatus | None = None) -> list[Bot]:
         """Get all bots"""
 
         query = select(BotModel)
         if status is not None:
             query = query.where(BotModel.status == status)
-        bots = await self.session.execute(query)
-        return [Bot.from_orm(b) for b in bots.scalars()]
+        bots = self.session.exec(query).all()
+        return [Bot.from_orm(b) for b in bots]
 
-    async def get_bot(self) -> Bot:
+    def get_bot(self) -> Bot:
         """Get bot by id"""
-        bot_scalar = (
-            await self.session.execute(select(BotModel).where(BotModel.id == self.id))
-        ).scalar_one_or_none()
-        if bot_scalar is None:
+        bot = (
+            self.session.exec(select(BotModel).where(BotModel.id == self.id))
+        ).one_or_none()
+        if bot is None:
             raise HTTPException(status_code=404, detail="Bot not found")
-        return Bot.from_orm(bot_scalar)
+        return Bot.from_orm(bot)
 
-    async def get_bot_with_details(self) -> BotWithDetails:
+    def get_bot_with_details(self) -> BotWithDetails:
         """Get bot by id with orders and levels"""
-        bot = await self.get_bot()
-        orders = await self.get_orders()
-        levels = await self.get_levels()
+        bot = self.get_bot()
+        orders = self.get_orders()
+        levels = self.get_levels()
         bot = BotWithDetails(**bot.dict(), orders=orders, levels=levels)
         return bot
 
-    async def create_bot(self, bot_data: BotCreate) -> Bot:
+    def create_bot(self, bot_data: BotCreate) -> Bot:
         """Create bot"""
         exchange = exchanges_manager.get(bot_data.exchange_account)
         symbol_info = exchange.fetch_market(bot_data.symbol)
@@ -51,7 +52,7 @@ class BotsManager:
         total_level_height = 1 + bot_data.level_height + taker + maker
         bot = BotModel(
             **bot_data.dict(),
-            status=BotStatus.RUNNING, # TODO: !!! must be STOPPED
+            status=BotStatus.RUNNING,  # TODO: !!! must be STOPPED
             taker=taker,
             maker=maker,
             total_level_height=total_level_height,
@@ -59,16 +60,16 @@ class BotsManager:
             last_price=0,
         )
         self.session.add(bot)
-        await self.session.commit()
-        await self.session.refresh(bot)
+        self.session.commit()
+        self.session.refresh(bot)
         return Bot.from_orm(bot)
 
-    async def delete_bot(self) -> None:
+    def delete_bot(self) -> None:
         """Delete bot by id"""
-        await self.session.delete(await self.bot)
-        await self.session.commit()
+        self.session.delete(BotModel, self.id)
+        self.session.commit()
 
-    async def get_orders(
+    def get_orders(
         self, side: OrderSide | None = None, status: OrderStatus | None = None
     ) -> list[Order]:
         """Get all orders for bot"""
@@ -81,19 +82,19 @@ class BotsManager:
             query = query.where(Order.side == side)
         if status is not None:
             query = query.where(Order.status == status)
-        orders_scalars = (await self.session.execute(query)).scalars()
-        result = [Order.from_orm(order) for order in orders_scalars]
+        orders = self.session.execute(query).all()
+        result = [Order.from_orm(order) for order in orders]
         return result
 
-    async def get_levels(self) -> list[Level]:
+    def get_levels(self) -> list[Level]:
         """Get all levels"""
         query = (
             select(LevelModel)
             .where(LevelModel.bot_id == self.id)
             .order_by(LevelModel.floor)
         )
-        levels_scalars = (await self.session.execute(query)).scalars()
-        levels = [Level.from_orm(level) for level in levels_scalars]
+        levels = self.session.execute(query).all()
+        levels = [Level.from_orm(level) for level in levels]
         # delete empty levels at the top and bottom
         while levels and levels[0].is_empty():
             levels.pop(0)
